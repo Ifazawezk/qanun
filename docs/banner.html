@@ -1,0 +1,65 @@
+<!doctype html>
+<!-- Source of docs/images/banner.png. Render with a headless browser at 1280x640:
+     msedge --headless=new --window-size=1280,640 --screenshot=banner.png docs/banner.html -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        width: 1280px;
+        height: 640px;
+        overflow: hidden;
+        font-family: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+        background: linear-gradient(135deg, #8a1538 0%, #5e0e26 100%);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 40px;
+        padding: 0 0 0 64px;
+      }
+      .copy { width: 480px; flex: none; }
+      .logo {
+        width: 64px; height: 64px; border-radius: 16px; background: #fff; color: #8a1538;
+        display: grid; place-items: center; font-size: 40px; font-weight: 700;
+      }
+      h1 { font-size: 64px; margin: 18px 0 0; line-height: 1; letter-spacing: -0.02em; }
+      h1 span { font-size: 54px; opacity: 0.85; margin-left: 14px; }
+      .pitch { font-size: 22px; line-height: 1.45; margin: 22px 0 0; }
+      .pitch-ar { font-size: 22px; line-height: 1.6; margin: 10px 0 0; direction: rtl; text-align: right; opacity: 0.92; }
+      .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+      .tags span { border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 999px; padding: 3px 12px; font-size: 14px; }
+      .shot {
+        flex: none; width: 720px; height: 520px; border-radius: 14px 0 0 14px; overflow: hidden;
+        background: #f7f5f2; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      }
+      .bar { height: 30px; background: #e9e4de; display: flex; align-items: center; gap: 7px; padding-left: 14px; }
+      .bar i { width: 11px; height: 11px; border-radius: 50%; background: #cfc6bd; display: block; }
+      .crop { height: 490px; overflow: hidden; position: relative; }
+      .crop img { position: absolute; width: 1280px; left: -160px; top: -280px; transform: scale(0.76); transform-origin: 160px 280px; }
+    </style>
+  </head>
+  <body>
+    <div class="copy">
+      <div class="logo">ق</div>
+      <h1>qanun<span>قانون</span></h1>
+      <p class="pitch">Ask about Qatar's Labour Law in Arabic or English and get the exact articles that answer it.</p>
+      <p class="pitch-ar">اسأل عن قانون العمل القطري بالعربية أو الإنجليزية واحصل على المواد التي تجيب عن سؤالك.</p>
+      <div class="tags">
+        <span>Hybrid BM25 + embeddings</span>
+        <span>Cross-lingual</span>
+        <span>Article citations</span>
+        <span>FastAPI + React</span>
+      </div>
+    </div>
+    <div class="shot">
+      <div class="bar"><i></i><i></i><i></i></div>
+      <div class="crop"><img src="images/answer-en.png" alt="" /></div>
+    </div>
+  </body>
+</html>
