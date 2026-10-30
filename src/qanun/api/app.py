@@ -115,7 +115,7 @@ def create_app(
         for hit in hits:
             article = a.engine.article(hit.article_id)
             text_lang = "en" if lang == "en" and article.text_en else "ar"
-            passage = best_passage(q, article.text(text_lang), text_lang)
+            passage = best_passage(q, article.text(text_lang), text_lang, idf=a.engine.bm25.idf)
             out.append(
                 SearchHit(
                     rank=hit.rank,

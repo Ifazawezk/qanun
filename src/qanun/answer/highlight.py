@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Callable, Sequence
+from typing import Callable, Mapping, Sequence
 
 from qanun.answer.models import Passage
 from qanun.text.tokenize import analyze, tokens
@@ -52,6 +52,8 @@ def best_passage(
     lang: str,
     similarity: Callable[[Sequence[str]], Sequence[float]] | None = None,
     max_sentences: int = 2,
+    idf: Mapping[str, float] | None = None,
+    min_idf: float = 1.0,
 ) -> Passage:
     """Choose up to max_sentences adjacent sentences that best match the question.
 
@@ -59,6 +61,9 @@ def best_passage(
     a similarity function is given (the embedding model), it is added in, which
     matters when the question and the article are in different languages and
     no words overlap.
+
+    With idf weights (from the BM25 index) rare words count for more, and words
+    that occur in most articles, such as "worker", are not highlighted.
     """
     spans = split_sentences(text)
     if not spans:
@@ -66,10 +71,14 @@ def best_passage(
     query_terms = set(analyze(question))
     sentences = [text[a:b] for a, b in spans]
 
+    def weight(term: str) -> float:
+        return idf.get(term, min_idf) if idf is not None else 1.0
+
+    total = sum(weight(t) for t in query_terms) or 1.0
     overlap = []
     for sentence in sentences:
         terms = set(analyze(sentence))
-        overlap.append(len(terms & query_terms) / (len(query_terms) or 1))
+        overlap.append(sum(weight(t) for t in terms & query_terms) / total)
     semantic = list(similarity(sentences)) if similarity else [0.0] * len(sentences)
     scores = [o + s for o, s in zip(overlap, semantic)]
 
@@ -85,7 +94,8 @@ def best_passage(
             break
     start_char, end_char = spans[best][0], spans[end - 1][1]
     passage = text[start_char:end_char].strip()
-    return Passage(text=passage, lang=lang, highlights=term_highlights(passage, query_terms))
+    marked = {t for t in query_terms if idf is None or weight(t) >= min_idf}
+    return Passage(text=passage, lang=lang, highlights=term_highlights(passage, marked))
 
 
 def render_marked(passage: Passage, open_mark: str = "**", close_mark: str = "**") -> str:

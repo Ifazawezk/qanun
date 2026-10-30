@@ -61,7 +61,9 @@ class Assistant:
     def citation(self, article: Article, rank: int, score: float, question: str, lang: str, similarity=None) -> Citation:
         law = self.engine.laws.get(article.law)
         text_lang = "en" if lang == "en" and article.text_en else "ar"
-        passage = best_passage(question, article.text(text_lang), text_lang, similarity)
+        passage = best_passage(
+            question, article.text(text_lang), text_lang, similarity, idf=self.engine.bm25.idf
+        )
         return Citation(
             article_id=article.id,
             law=article.law,

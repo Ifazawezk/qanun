@@ -23,6 +23,7 @@ models/
 # Node
 web/node_modules/
 web/dist/
+*.tsbuildinfo
 
 # Local settings
 .env

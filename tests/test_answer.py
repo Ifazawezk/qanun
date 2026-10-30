@@ -41,6 +41,13 @@ def test_lead_in_sentence_pulls_in_the_list_that_follows():
     assert "discloses secrets" in passage.text
 
 
+def test_common_words_are_not_highlighted_with_idf():
+    idf = {"worker": 0.2, "annual": 2.5, "leav": 2.0}
+    passage = best_passage("annual leave for a worker", "The Worker is entitled to annual leave.", "en", idf=idf)
+    marked = [passage.text[a:b] for a, b in passage.highlights]
+    assert marked == ["annual", "leave"]
+
+
 def test_render_marked():
     passage = best_passage("annual leave", "The Worker is entitled to annual leave.", "en")
     assert render_marked(passage) == "The Worker is entitled to **annual** **leave**."
