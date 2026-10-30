@@ -34,6 +34,21 @@ def cmd_index(args: argparse.Namespace) -> None:
         )
 
 
+def cmd_eval(args: argparse.Namespace) -> None:
+    from qanun.evaluation import EVAL_DIR, load_questions, run
+
+    results = run(args.model)
+    questions = load_questions()
+    print(f"{'method':45} R@1    R@3    R@5    R@10   MRR@10")
+    for r in results:
+        m = r.metrics(questions)
+        print(
+            f"{r.method:45} {m['recall@1']:.3f}  {m['recall@3']:.3f}  {m['recall@5']:.3f}  "
+            f"{m['recall@10']:.3f}  {m['mrr@10']:.3f}"
+        )
+    print(f"wrote {EVAL_DIR / 'results.md'}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="qanun", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -49,6 +64,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--model", action="append", help="preset (e5-small, minilm) or model id")
     p.add_argument("--rebuild", action="store_true")
     p.set_defaults(func=cmd_index)
+
+    p = sub.add_parser("eval", help="evaluate BM25, dense and hybrid retrieval")
+    p.add_argument("--model", action="append", help="embedding model(s) to compare")
+    p.set_defaults(func=cmd_eval)
     return parser
 
 

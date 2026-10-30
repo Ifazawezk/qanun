@@ -38,6 +38,20 @@ INSTRUMENT = re.compile(
 INSTRUMENT_KINDS_EN = {"مرسوم بقانون": "Decree-Law", "قانون": "Law"}
 
 
+# Differences between a translation and the Arabic text found while reviewing
+# the corpus by hand. The Arabic text is the authoritative one.
+REVIEW_NOTES = {
+    "labour-2004:61": [
+        "The legacy English translation of item 2 says the Department must be told within "
+        "twenty-four hours; the Arabic text says before the end of the next working day."
+    ],
+    "labour-2004:74": [
+        "The legacy English translation gives the night-work window as 9 pm to 6 am; "
+        "the Arabic text says 9 pm to 3 am."
+    ],
+}
+
+
 # ---------------------------------------------------------------- text helpers
 
 
@@ -57,12 +71,17 @@ def html_to_text(html: str | None) -> str:
 
 
 def strip_quotes(text: str) -> str:
-    """Amended articles are quoted from the amending law: '"...text...".'"""
+    """Amended articles are quoted from the amending law: '"...text...".'
+
+    Some entries keep only the closing quote, so an unmatched quote at the end
+    is dropped as well.
+    """
     text = text.strip()
-    if text.startswith(('"', "“")):
-        end = re.search(r"[\"”]\s*\.?\s*$", text)
-        if end:
-            return text[1 : end.start()].strip()
+    end = re.search(r"[\"”]\s*\.?\s*$", text)
+    if text.startswith(('"', "“")) and end:
+        return text[1 : end.start()].strip()
+    if end and text.count('"') % 2 == 1:
+        return text[: end.start()].strip()
     return text
 
 
@@ -261,7 +280,7 @@ def parse_law(
         superseded = [e[2] for e in entries if e[2] is not item]
 
         text_ar = html_to_text(item.get("description"))
-        notes: list[str] = []
+        notes: list[str] = list(REVIEW_NOTES.get(f"{source.key}:{label.slug}", []))
 
         en_item = en_articles.get(item["id"], {})
         en_text = html_to_text(en_item.get("description"))

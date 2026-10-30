@@ -21,6 +21,11 @@ def test_html_to_text_keeps_paragraphs_and_drops_tags():
     assert html_to_text(html) == "first line\nsecond 12 line"
 
 
+def test_html_to_text_drops_unmatched_closing_quote():
+    assert html_to_text("<div>text of the article.&quot;.</div>") == "text of the article."
+    assert html_to_text('a "quoted" word') == 'a "quoted" word'
+
+
 def test_html_to_text_removes_zero_width_characters():
     assert html_to_text("للوافد‌ ‌للعمل") == "للوافد للعمل"
 

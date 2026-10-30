@@ -1,0 +1,60 @@
+{"id": "en-01", "lang": "en", "topic": "gratuity", "question": "How is end of service gratuity calculated in Qatar?", "gold": ["labour-2004:54"]}
+{"id": "en-02", "lang": "en", "topic": "dismissal", "question": "Can my employer refuse to pay my gratuity if I am dismissed for misconduct?", "gold": ["labour-2004:61"]}
+{"id": "en-03", "lang": "en", "topic": "annual leave", "question": "How many days of annual leave do I get after five years with the same company?", "gold": ["labour-2004:79"]}
+{"id": "en-04", "lang": "en", "topic": "annual leave", "question": "Can I carry over unused annual leave to next year?", "gold": ["labour-2004:80"]}
+{"id": "en-05", "lang": "en", "topic": "annual leave", "question": "Will I be paid for the annual leave I did not take when my contract ends?", "gold": ["labour-2004:81"]}
+{"id": "en-06", "lang": "en", "topic": "working hours", "question": "What are the working hours during Ramadan?", "gold": ["labour-2004:73"]}
+{"id": "en-07", "lang": "en", "topic": "overtime", "question": "What is the maximum number of hours I can work in one day including overtime?", "gold": ["labour-2004:74"]}
+{"id": "en-08", "lang": "en", "topic": "overtime", "question": "How much extra does the employer have to pay for overtime?", "gold": ["labour-2004:74"]}
+{"id": "en-09", "lang": "en", "topic": "rest day", "question": "Is Friday a day off, and what am I paid if I have to work on my rest day?", "gold": ["labour-2004:75"]}
+{"id": "en-10", "lang": "en", "topic": "probation", "question": "How long can a probation period last?", "gold": ["labour-2004:39"]}
+{"id": "en-11", "lang": "en", "topic": "notice", "question": "How much notice do I have to give before resigning if I have worked for three years?", "gold": ["labour-2004:49"]}
+{"id": "en-12", "lang": "en", "topic": "notice", "question": "What happens if I leave my job without serving the notice period?", "gold": ["labour-2004:49"]}
+{"id": "en-13", "lang": "en", "topic": "minimum wage", "question": "What is the minimum wage in Qatar?", "gold": ["min-wage-decision-2020:2"]}
+{"id": "en-14", "lang": "en", "topic": "minimum wage", "question": "If my employer does not give me accommodation or food, how much allowance must they pay?", "gold": ["min-wage-decision-2020:2"]}
+{"id": "en-15", "lang": "en", "topic": "minimum wage", "question": "Is a contract valid if it pays less than the minimum wage?", "gold": ["min-wage-2020:3"]}
+{"id": "en-16", "lang": "en", "topic": "changing employer", "question": "Can I change employers without a no objection certificate from my current employer?", "gold": ["residency-2015:21"]}
+{"id": "en-17", "lang": "en", "topic": "changing employer", "question": "If I move to another employer during probation, who pays back the recruitment costs?", "gold": ["labour-2004:39"]}
+{"id": "en-18", "lang": "en", "topic": "sick leave", "question": "How many weeks of sick leave are paid, and at what rate?", "gold": ["labour-2004:82"]}
+{"id": "en-19", "lang": "en", "topic": "maternity", "question": "How long is maternity leave for women workers?", "gold": ["labour-2004:96"]}
+{"id": "en-20", "lang": "en", "topic": "passport", "question": "Is my employer allowed to keep my passport?", "gold": ["residency-2015:8"]}
+{"id": "en-21", "lang": "en", "topic": "exit", "question": "Do I need my employer's permission to travel out of Qatar?", "gold": ["residency-2015:7"]}
+{"id": "en-22", "lang": "en", "topic": "final settlement", "question": "When must my final salary and dues be paid after my contract ends?", "gold": ["labour-2004:67"]}
+{"id": "en-23", "lang": "en", "topic": "wage payment", "question": "How often must wages be paid, and can my employer pay me in cash instead of to a bank account?", "gold": ["labour-2004:66"]}
+{"id": "en-24", "lang": "en", "topic": "repatriation", "question": "Who pays for my ticket home when my employment ends?", "gold": ["labour-2004:57"]}
+{"id": "en-25", "lang": "en", "topic": "resignation", "question": "Can I quit without notice and keep my gratuity if my employer stops paying my salary?", "gold": ["labour-2004:51"]}
+{"id": "en-26", "lang": "en", "topic": "disputes", "question": "Where do I file a complaint if I have a dispute with my employer?", "gold": ["labour-2004:115-bis"]}
+{"id": "en-27", "lang": "en", "topic": "public holidays", "question": "How many paid days off do workers get for Eid?", "gold": ["labour-2004:78"]}
+{"id": "en-28", "lang": "en", "topic": "non-compete", "question": "Can my contract stop me from working for a competitor after I leave?", "gold": ["labour-2004:43"]}
+{"id": "en-29", "lang": "en", "topic": "minors", "question": "What is the minimum age for employment?", "gold": ["labour-2004:86"]}
+{"id": "en-30", "lang": "en", "topic": "contract", "question": "What is the maximum length of a fixed-term employment contract?", "gold": ["labour-2004:40"]}
+{"id": "en-31", "lang": "en", "topic": "penalties", "question": "Can my employer deduct days from my salary as a disciplinary penalty, and is there a limit?", "gold": ["labour-2004:60"]}
+{"id": "en-32", "lang": "en", "topic": "termination", "question": "Can I be fired while I am on leave?", "gold": ["labour-2004:85"]}
+{"id": "en-33", "lang": "en", "topic": "hajj", "question": "Do Muslim workers get leave for Hajj, and is it paid?", "gold": ["labour-2004:83"]}
+{"id": "en-34", "lang": "en", "topic": "redundancy", "question": "Does my employer have to inform the ministry before laying off workers for economic reasons?", "gold": ["labour-2004:52-bis"]}
+{"id": "en-35", "lang": "en", "topic": "wage payment", "question": "What is the penalty for an employer who does not pay wages on time?", "gold": ["labour-2004:145-bis"]}
+{"id": "ar-01", "lang": "ar", "topic": "annual leave", "question": "كم مدة الإجازة السنوية للعامل في قطر؟", "gold": ["labour-2004:79"]}
+{"id": "ar-02", "lang": "ar", "topic": "gratuity", "question": "كيف تحسب مكافأة نهاية الخدمة؟", "gold": ["labour-2004:54"]}
+{"id": "ar-03", "lang": "ar", "topic": "working hours", "question": "ما هي ساعات الدوام في شهر رمضان؟", "gold": ["labour-2004:73"]}
+{"id": "ar-04", "lang": "ar", "topic": "probation", "question": "ما هي أقصى مدة لفترة التجربة في عقد العمل؟", "gold": ["labour-2004:39"]}
+{"id": "ar-05", "lang": "ar", "topic": "notice", "question": "كم مدة الإنذار المطلوبة عند الاستقالة بعد سنتين من العمل؟", "gold": ["labour-2004:49"]}
+{"id": "ar-06", "lang": "ar", "topic": "minimum wage", "question": "كم الحد الأدنى للأجور في قطر؟", "gold": ["min-wage-decision-2020:2"]}
+{"id": "ar-07", "lang": "ar", "topic": "changing employer", "question": "هل يحق لي الانتقال إلى صاحب عمل آخر دون موافقة الكفيل؟", "gold": ["residency-2015:21"]}
+{"id": "ar-08", "lang": "ar", "topic": "overtime", "question": "كيف يحسب أجر الساعات الإضافية؟", "gold": ["labour-2004:74"]}
+{"id": "ar-09", "lang": "ar", "topic": "passport", "question": "هل يجوز للشركة الاحتفاظ بجواز سفري؟", "gold": ["residency-2015:8"]}
+{"id": "ar-10", "lang": "ar", "topic": "sick leave", "question": "كم أسبوع إجازة مرضية مدفوعة الأجر؟", "gold": ["labour-2004:82"]}
+{"id": "ar-11", "lang": "ar", "topic": "dismissal", "question": "متى يجوز فصل العامل بدون إنذار وبدون مكافأة نهاية الخدمة؟", "gold": ["labour-2004:61"]}
+{"id": "ar-12", "lang": "ar", "topic": "maternity", "question": "ما هي مدة إجازة الولادة للموظفة؟", "gold": ["labour-2004:96"]}
+{"id": "ar-13", "lang": "ar", "topic": "public holidays", "question": "كم يوم إجازة في عيد الفطر وعيد الأضحى؟", "gold": ["labour-2004:78"]}
+{"id": "ar-14", "lang": "ar", "topic": "final settlement", "question": "متى يجب على صاحب العمل دفع مستحقات العامل بعد انتهاء العقد؟", "gold": ["labour-2004:67"]}
+{"id": "ar-15", "lang": "ar", "topic": "contract", "question": "هل يجب أن يكون عقد العمل مكتوبا وباللغة العربية؟", "gold": ["labour-2004:38", "labour-2004:9"]}
+{"id": "ar-16", "lang": "ar", "topic": "disputes", "question": "ماذا أفعل إذا حدث خلاف بيني وبين صاحب العمل على الراتب؟", "gold": ["labour-2004:115-bis"]}
+{"id": "ar-17", "lang": "ar", "topic": "minimum wage", "question": "كم بدل السكن وبدل الطعام إذا لم يوفرهما صاحب العمل؟", "gold": ["min-wage-decision-2020:2"]}
+{"id": "ar-18", "lang": "ar", "topic": "rest day", "question": "هل أستحق أجرا إضافيا إذا اشتغلت يوم الجمعة؟", "gold": ["labour-2004:75"]}
+{"id": "ar-19", "lang": "ar", "topic": "wage payment", "question": "هل يجب تحويل الراتب إلى حساب بنكي؟", "gold": ["labour-2004:66"]}
+{"id": "ar-20", "lang": "ar", "topic": "wage payment", "question": "ما هي عقوبة صاحب العمل الذي يتأخر في دفع الرواتب؟", "gold": ["labour-2004:145-bis"]}
+{"id": "ar-21", "lang": "ar", "topic": "repatriation", "question": "من يتحمل تكلفة تذكرة عودة العامل إلى بلده عند انتهاء خدمته؟", "gold": ["labour-2004:57"]}
+{"id": "ar-22", "lang": "ar", "topic": "redundancy", "question": "هل يجوز للشركة إنهاء عقود الموظفين لأسباب اقتصادية؟", "gold": ["labour-2004:52-bis"]}
+{"id": "ar-23", "lang": "ar", "topic": "minors", "question": "ما هو أصغر سن مسموح بتشغيله؟", "gold": ["labour-2004:86"]}
+{"id": "ar-24", "lang": "ar", "topic": "exit", "question": "هل أحتاج إذن الخروج من صاحب العمل للسفر خارج قطر؟", "gold": ["residency-2015:7"]}
+{"id": "ar-25", "lang": "ar", "topic": "minimum wage", "question": "هل يجوز الاتفاق على راتب أقل من الحد الأدنى للأجور؟", "gold": ["min-wage-2020:3"]}
