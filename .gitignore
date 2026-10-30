@@ -31,3 +31,8 @@ web/dist/
 .DS_Store
 .vscode/
 .idea/
+
+# Desktop build
+build-desktop/
+dist-desktop/
+desktop/qanun.ico

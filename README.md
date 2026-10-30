@@ -229,6 +229,10 @@ data/corpus/   processed articles (data/raw and data/index are rebuilt, not comm
 tests/         pytest suite
 ```
 
+## Windows desktop app
+
+`desktop/build.ps1` packages qanun as a single `qanun.exe` of about 73 MB that opens in its own window and works offline. It uses keyword search only, so it needs no model download, but it finds the right article less often than the full setup (see Evaluation). Build the web UI first, then run it from the repo root. The exe is not code signed, so Windows SmartScreen may warn on first launch.
+
 ## Data sources and terms
 
 | Source | Used for | Notes |
