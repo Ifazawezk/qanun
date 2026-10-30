@@ -48,8 +48,15 @@ class HybridRetriever:
         self.weights = weights
 
     def rankings(self, query: str, laws: Iterable[str] | None = None) -> dict[str, list[Hit]]:
+        """One ranking per retriever, keyed by name (made unique if two share one)."""
         laws = list(laws) if laws else None
-        return {r.name: r.search(query, k=self.depth, laws=laws) for r in self.retrievers}
+        out: dict[str, list[Hit]] = {}
+        for retriever in self.retrievers:
+            key, n = retriever.name, 2
+            while key in out:
+                key, n = f"{retriever.name}#{n}", n + 1
+            out[key] = retriever.search(query, k=self.depth, laws=laws)
+        return out
 
     def search(self, query: str, k: int = 10, laws: Iterable[str] | None = None) -> list[Hit]:
         rankings = self.rankings(query, laws)

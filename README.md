@@ -24,3 +24,17 @@ pip install -e ".[dev]"
 python -m qanun.corpus.fetch  # downloads into data/raw, slowly and with caching
 python -m qanun.corpus.parse  # writes data/corpus/articles.jsonl, laws.json and a Parquet copy
 ```
+
+## Retrieval evaluation
+
+`eval/questions.jsonl` holds 60 questions written by hand (35 English, 25 Arabic) about gratuity, leave, working hours, probation, notice, minimum wage, changing employers, overtime and more, each with the article(s) that answer it. `qanun eval` scores every retriever on them; the full report, including the questions each method misses, is in [eval/results.md](eval/results.md).
+
+| Method | Recall@1 | Recall@5 | Recall@10 | MRR@10 |
+| --- | --- | --- | --- | --- |
+| BM25 | 0.375 | 0.617 | 0.750 | 0.503 |
+| Dense (e5-small) | 0.558 | 0.650 | 0.767 | 0.612 |
+| Hybrid RRF (BM25 + e5-small) | 0.458 | 0.717 | 0.767 | 0.560 |
+| Dense (minilm) | 0.308 | 0.658 | 0.692 | 0.433 |
+| Hybrid RRF (BM25 + minilm) | 0.358 | 0.750 | 0.817 | 0.516 |
+
+Dense retrieval with e5-small is the strongest at the top of the list, while the fused rankings find more gold articles within the first five or ten results. The weak spot is the 9 English questions whose answer only exists in Arabic (no English translation on Al Meezan): e5-small finds none of them in the top 5, the MiniLM paraphrase model finds 4 of 9. See the subset tables in the report.

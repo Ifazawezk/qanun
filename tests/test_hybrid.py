@@ -47,6 +47,21 @@ def test_hybrid_combines_lexical_and_cross_lingual_hits(sample_articles, sample_
     assert set(rankings) == {"bm25", "dense"}
 
 
+def test_hybrid_keeps_rankings_from_retrievers_with_the_same_name():
+    class Fixed:
+        name = "dense"
+
+        def __init__(self, ids):
+            self.ids = ids
+
+        def search(self, query, k=10, laws=None):
+            return ranking(*self.ids)
+
+    hybrid = HybridRetriever([Fixed(["a", "b"]), Fixed(["c", "a"])])
+    assert set(hybrid.rankings("q")) == {"dense", "dense#2"}
+    assert [h.article_id for h in hybrid.search("q")] == ["a", "c", "b"]
+
+
 def test_hybrid_law_filter(sample_articles, sample_laws, fake_encoder):
     bm25 = BM25Index.from_articles(sample_articles, sample_laws)
     dense = DenseIndex.build(sample_articles, fake_encoder, sample_laws)
