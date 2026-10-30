@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+build/
+dist/
+
+# Raw downloads, built indexes and model files are rebuilt by scripts
+data/raw/
+data/index/
+data/corpus/*.parquet
+models/
+*.npy
+*.safetensors
+*.bin
+*.onnx
+
+# Node
+web/node_modules/
+web/dist/
+
+# Local settings
+.env
+*.log
+.DS_Store
+.vscode/
+.idea/
