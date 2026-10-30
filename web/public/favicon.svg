@@ -1,4 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#8a1538"/>
-  <path d="M20 18h24M32 18v28M22 46h20M14 28l6-10 6 10a6 6 0 0 1-12 0zM38 28l6-10 6 10a6 6 0 0 1-12 0z" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="qanun logo: the Arabic letter qaf with a magnifying glass for a head">
+  <rect width="512" height="512" rx="112" fill="#6f1a35"/>
+  <!-- the two dots of the letter -->
+  <rect x="222" y="74" width="50" height="50" rx="8" transform="rotate(45 247 99)" fill="#f2c879"/>
+  <rect x="312" y="74" width="50" height="50" rx="8" transform="rotate(45 337 99)" fill="#f2c879"/>
+  <!-- the bowl of the letter -->
+  <path d="M368 240 V300 C368 392 300 436 230 436 C150 436 100 382 110 306" fill="none" stroke="#fbf3e4" stroke-width="46" stroke-linecap="round"/>
+  <!-- the head, drawn as a lens -->
+  <circle cx="300" cy="232" r="68" fill="#8f2a4b" stroke="#fbf3e4" stroke-width="46"/>
+  <path d="M262 214 A42 42 0 0 1 296 190" fill="none" stroke="#f2c879" stroke-width="14" stroke-linecap="round"/>
 </svg>

@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="docs/images/logo.svg" alt="qanun logo" width="110">
+</p>
+
+<p align="center">
   <img src="docs/images/banner.png" alt="qanun: ask about Qatar's Labour Law in Arabic or English and get the exact articles that answer it" width="100%">
 </p>
 

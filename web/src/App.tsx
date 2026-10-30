@@ -96,9 +96,7 @@ export default function App() {
     <div className="page">
       <header className="topbar">
         <div className="brand">
-          <span className="logo" aria-hidden="true">
-            ق
-          </span>
+          <img className="logo" src="/favicon.svg" alt="" width="48" height="48" />
           <div>
             <h1>
               qanun <span className="brand-ar">قانون</span>
