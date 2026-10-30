@@ -22,11 +22,13 @@ def cmd_parse(args: argparse.Namespace) -> None:
 
 def cmd_index(args: argparse.Namespace) -> None:
     from qanun.corpus.store import load_articles, load_laws
-    from qanun.retrieval.dense import load_or_build
+    from qanun.retrieval.dense import DEFAULT_MODEL, load_or_build
+
+    from qanun.app_factory import embedding_model
 
     articles = load_articles()
     laws = {law.key: law for law in load_laws()}
-    for model in args.model:
+    for model in args.model or [embedding_model() or DEFAULT_MODEL]:
         start = time.perf_counter()
         index = load_or_build(model, articles, laws, rebuild=args.rebuild)
         print(
@@ -37,8 +39,9 @@ def cmd_index(args: argparse.Namespace) -> None:
 
 def cmd_eval(args: argparse.Namespace) -> None:
     from qanun.evaluation import EVAL_DIR, load_questions, run
+    from qanun.retrieval.dense import DEFAULT_MODEL
 
-    results = run(args.model)
+    results = run(args.model or [DEFAULT_MODEL])
     questions = load_questions()
     print(f"{'method':45} R@1    R@3    R@5    R@10   MRR@10")
     for r in results:
@@ -117,10 +120,6 @@ def main(argv: list[str] | None = None) -> None:
     for noisy in ("httpx", "httpx2", "sentence_transformers", "huggingface_hub", "transformers"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
     args = build_parser().parse_args(argv)
-    if getattr(args, "model", "unset") is None:
-        from qanun.retrieval.dense import DEFAULT_MODEL
-
-        args.model = [DEFAULT_MODEL]
     args.func(args)
 
 
