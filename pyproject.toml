@@ -18,9 +18,13 @@ dependencies = [
     "pyarrow>=15",
     "numpy>=1.26",
     "snowballstemmer>=2.2",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
 ]
 
 [project.optional-dependencies]
+# Install PyTorch first (CPU build: pip install torch --index-url https://download.pytorch.org/whl/cpu)
+embeddings = ["sentence-transformers>=3.0"]
 dev = ["pytest>=8"]
 
 [project.scripts]

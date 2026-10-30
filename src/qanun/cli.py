@@ -67,6 +67,12 @@ def cmd_ask(args: argparse.Namespace) -> None:
         print()
 
 
+def cmd_serve(args: argparse.Namespace) -> None:
+    import uvicorn
+
+    uvicorn.run("qanun.api.app:app", host=args.host, port=args.port, reload=args.reload)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="qanun", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -89,6 +95,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--mode", default="auto", choices=["auto", "extractive", "generative"])
     p.add_argument("--model", action="append", help="embedding model")
     p.set_defaults(func=cmd_ask)
+
+    p = sub.add_parser("serve", help="run the HTTP API (and the web UI if it is built)")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=8000)
+    p.add_argument("--reload", action="store_true")
+    p.set_defaults(func=cmd_serve)
 
     p = sub.add_parser("eval", help="evaluate BM25, dense and hybrid retrieval")
     p.add_argument("--model", action="append", help="embedding model(s) to compare")
