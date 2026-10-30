@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 import time
 
 
@@ -49,6 +50,23 @@ def cmd_eval(args: argparse.Namespace) -> None:
     print(f"wrote {EVAL_DIR / 'results.md'}")
 
 
+def cmd_ask(args: argparse.Namespace) -> None:
+    from qanun.answer.highlight import render_marked
+    from qanun.app_factory import build_assistant
+
+    assistant = build_assistant(model=args.model[0] if args.model else None)
+    answer = assistant.ask(" ".join(args.question), k=args.k, mode=args.mode)
+    print(answer.text)
+    print()
+    for c in answer.citations:
+        print(f"[{c.rank}] {c.title} - {c.law_name}")
+        print(f"    {c.url}")
+        if c.passage:
+            marked = render_marked(c.passage)
+            print("    " + marked.replace(chr(10), chr(10) + "    "))
+        print()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="qanun", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -65,6 +83,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--rebuild", action="store_true")
     p.set_defaults(func=cmd_index)
 
+    p = sub.add_parser("ask", help="ask a question from the command line")
+    p.add_argument("question", nargs="+")
+    p.add_argument("-k", type=int, default=4, help="number of articles to return")
+    p.add_argument("--mode", default="auto", choices=["auto", "extractive", "generative"])
+    p.add_argument("--model", action="append", help="embedding model")
+    p.set_defaults(func=cmd_ask)
+
     p = sub.add_parser("eval", help="evaluate BM25, dense and hybrid retrieval")
     p.add_argument("--model", action="append", help="embedding model(s) to compare")
     p.set_defaults(func=cmd_eval)
@@ -72,7 +97,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
+    # Windows consoles default to a legacy code page that cannot print Arabic.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    for noisy in ("httpx", "httpx2", "sentence_transformers", "huggingface_hub", "transformers"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
     args = build_parser().parse_args(argv)
     if getattr(args, "model", "unset") is None:
         from qanun.retrieval.dense import DEFAULT_MODEL
