@@ -26,6 +26,7 @@ class Citation:
     rank: int
     score: float
     passage: Passage | None = None
+    cited: bool = False  # True when a generated answer cites this article
 
 
 @dataclass
