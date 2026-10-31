@@ -11,6 +11,7 @@ from qanun.retrieval.base import Hit, Retriever
 from qanun.retrieval.bm25 import BM25Index
 from qanun.retrieval.dense import DEFAULT_MODEL, DenseIndex, load_or_build
 from qanun.retrieval.hybrid import CrossLanguageRetriever, HybridRetriever
+from qanun.retrieval.rerank import RERANK_DEPTH, CrossEncoderScorer, Reranker
 
 log = logging.getLogger("qanun.search")
 
@@ -23,6 +24,7 @@ class SearchEngine:
         articles: Iterable[Article],
         laws: Iterable[Law],
         dense: DenseIndex | None = None,
+        reranker: Reranker | None = None,
     ):
         self.articles = {a.id: a for a in articles}
         self.laws = {law.key: law for law in laws}
@@ -30,9 +32,10 @@ class SearchEngine:
         self.dense = dense
         self.hybrid = HybridRetriever([self.bm25, dense]) if dense else None
         self.cross = CrossLanguageRetriever(self.bm25, dense)
+        self.reranker = reranker
 
     @classmethod
-    def load(cls, model: str | None = DEFAULT_MODEL) -> "SearchEngine":
+    def load(cls, model: str | None = DEFAULT_MODEL, reranker: str | None = None) -> "SearchEngine":
         """Load everything from disk. With model=None, or if the embedding
         model cannot be loaded, only BM25 is available."""
         articles = load_articles()
@@ -44,7 +47,13 @@ class SearchEngine:
                 dense = load_or_build(model, articles, by_key)
             except ImportError as exc:
                 log.warning("dense retrieval disabled, missing dependency: %s", exc)
-        return cls(articles, laws, dense)
+        ranker = None
+        if reranker:
+            try:
+                ranker = Reranker(CrossEncoderScorer(reranker), articles, by_key)
+            except ImportError as exc:
+                log.warning("reranker disabled, missing dependency: %s", exc)
+        return cls(articles, laws, dense, ranker)
 
     @property
     def methods(self) -> list[str]:
@@ -76,9 +85,14 @@ class SearchEngine:
     ) -> list[Hit]:
         """A translation applies to the default search, and also works with BM25
         alone, which is how the desktop build reaches Arabic-only articles."""
+        depth = max(k, RERANK_DEPTH) if self.reranker else k
         if translation and method in (None, "cross"):
-            return self.cross.search(query, k=k, laws=laws, translation=translation)
-        return self.retriever(method).search(query, k=k, laws=laws)
+            hits = self.cross.search(query, k=depth, laws=laws, translation=translation)
+        else:
+            hits = self.retriever(method).search(query, k=depth, laws=laws)
+        if self.reranker:
+            return self.reranker.rerank(query, hits, k, translation)
+        return hits[:k]
 
     def article(self, article_id: str) -> Article | None:
         return self.articles.get(article_id)

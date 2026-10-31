@@ -46,6 +46,7 @@ def test_health(client):
     assert body["articles"] == 5  # the repealed sample article is not counted
     assert body["search_methods"] == ["bm25", "dense", "hybrid", "cross"]
     assert body["default_method"] == "cross"
+    assert body["reranker"] is None
     assert body["generation"] is False
 
 

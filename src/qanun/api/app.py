@@ -80,6 +80,7 @@ def create_app(
             search_methods=a.engine.methods,
             default_method=a.engine.default_method,
             embedding_model=dense.encoder.name if dense else None,
+            reranker=a.engine.reranker.scorer.name if a.engine.reranker else None,
             generation=a.can_generate,
             llm=f"{generator.client.provider}:{generator.client.model}" if generator else None,
         )

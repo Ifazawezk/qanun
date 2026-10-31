@@ -131,5 +131,6 @@ class HealthOut(BaseModel):
     search_methods: list[str]
     default_method: str
     embedding_model: str | None
+    reranker: str | None
     generation: bool
     llm: str | None
