@@ -6,14 +6,15 @@ import { Highlighted } from "./Highlighted";
 interface Props {
   uiLang: Lang;
   methods: string[];
+  defaultMethod: string;
   onOpen: (articleId: string) => void;
   initialQuery?: string;
 }
 
-export function SearchView({ uiLang, methods, onOpen, initialQuery = "" }: Props) {
+export function SearchView({ uiLang, methods, defaultMethod, onOpen, initialQuery = "" }: Props) {
   const s = t(uiLang);
   const [query, setQuery] = useState(initialQuery);
-  const [method, setMethod] = useState(methods.includes("hybrid") ? "hybrid" : methods[0] ?? "bm25");
+  const [method, setMethod] = useState(methods.includes(defaultMethod) ? defaultMethod : methods[0] ?? "bm25");
   const [result, setResult] = useState<SearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

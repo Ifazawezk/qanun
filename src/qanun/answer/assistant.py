@@ -33,10 +33,11 @@ NO_RESULTS = {
 
 
 class Assistant:
-    def __init__(self, engine: SearchEngine, generator=None, top_k: int = 4):
+    def __init__(self, engine: SearchEngine, generator=None, top_k: int = 4, translator=None):
         self.engine = engine
         self.generator = generator
         self.top_k = top_k
+        self.translator = translator
 
     @property
     def can_generate(self) -> bool:
@@ -89,10 +90,16 @@ class Assistant:
         if mode not in ("auto", "extractive", "generative"):
             raise ValueError(f"unknown mode: {mode}")
         if mode == "generative" and not self.can_generate:
-            raise RuntimeError("generative mode needs an LLM; set OPENAI_API_KEY or ANTHROPIC_API_KEY")
+            raise RuntimeError("generative mode needs an LLM; set QANUN_LLM_API_KEY, see .env.example")
         question = question.strip()
         lang = detect_language(question)
-        hits = self.engine.search(question, k=k or self.top_k, method=method, laws=laws)
+        # Extractive mode was asked for by name, so it must not call a provider.
+        translation = None
+        if self.translator is not None and mode != "extractive":
+            translation = self.translator.translate(question, lang)
+        hits = self.engine.search(
+            question, k=k or self.top_k, method=method, laws=laws, translation=translation
+        )
         articles = [self.engine.article(h.article_id) for h in hits]
         similarity = self._similarity(question) if hits else None
         citations = [
@@ -101,9 +108,14 @@ class Assistant:
         ]
 
         if not citations:
-            return Answer(question, lang, "extractive", NO_RESULTS[lang], [], refused=True)
+            return Answer(
+                question, lang, "extractive", NO_RESULTS[lang], [], refused=True,
+                translated_question=translation,
+            )
 
         if mode == "extractive" or (mode == "auto" and not self.can_generate):
-            return Answer(question, lang, "extractive", EXTRACTIVE_LEAD[lang], citations)
-
-        return self.generator.answer(question, lang, articles, citations)
+            answer = Answer(question, lang, "extractive", EXTRACTIVE_LEAD[lang], citations)
+        else:
+            answer = self.generator.answer(question, lang, articles, citations)
+        answer.translated_question = translation
+        return answer

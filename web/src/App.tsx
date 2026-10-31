@@ -175,9 +175,10 @@ export default function App() {
       ) : (
         <main>
           <SearchView
-            key={(health?.search_methods ?? []).join()}
+            key={`${(health?.search_methods ?? []).join()}-${health?.default_method}`}
             uiLang={lang}
             methods={health?.search_methods ?? ["bm25"]}
+            defaultMethod={health?.default_method ?? "bm25"}
             onOpen={open}
             initialQuery={params.get("s") ?? ""}
           />

@@ -10,13 +10,13 @@ interface Props {
   onOpen: (articleId: string) => void;
 }
 
-function shortTitle(c: Citation | undefined, id: string): string {
-  if (c) return c.title;
-  return id.split(":")[1] ?? id;
-}
-
-/** Answer text with [law:label] markers turned into buttons that open the article. */
-function AnswerText({ answer, onOpen }: { answer: Answer; onOpen: (id: string) => void }) {
+/**
+ * Answer text with [law:label] markers turned into buttons that open the article.
+ * The server has already validated them. A marker that is not among the returned
+ * articles is dropped here as well, so it can never become a link.
+ */
+function AnswerText({ answer, uiLang, onOpen }: { answer: Answer; uiLang: Lang; onOpen: (id: string) => void }) {
+  const s = t(uiLang);
   const byId = new Map(answer.citations.map((c) => [c.article_id, c]));
   const lines = answer.text.split(/\n+/).filter((line) => line.trim());
   return (
@@ -27,12 +27,19 @@ function AnswerText({ answer, onOpen }: { answer: Answer; onOpen: (id: string) =
         for (const match of line.matchAll(CITATION)) {
           const index = match.index ?? 0;
           pieces.push(line.slice(last, index));
-          const id = match[1];
-          pieces.push(
-            <button key={`${li}-${index}`} className="cite-chip" onClick={() => onOpen(id)} title={id}>
-              {shortTitle(byId.get(id), id)}
-            </button>,
-          );
+          const citation = byId.get(match[1]);
+          if (citation) {
+            pieces.push(
+              <button
+                key={`${li}-${index}`}
+                className="cite-chip"
+                onClick={() => onOpen(citation.article_id)}
+                title={`${s.openArticle}: ${citation.law_name}`}
+              >
+                {citation.title}
+              </button>,
+            );
+          }
           last = index + match[0].length;
         }
         pieces.push(line.slice(last));
@@ -75,30 +82,42 @@ function CitationCard({ c, uiLang, onOpen }: { c: Citation; uiLang: Lang; onOpen
 export function AnswerView({ answer, uiLang, onOpen }: Props) {
   const s = t(uiLang);
   const generative = answer.mode === "generative";
+  const written = generative && !answer.refused;
+  const refusal = answer.withheld ? "withheld" : "refused";
+  const badge = !generative ? s.extractiveBadge : written ? s.generativeBadge : s[`${refusal}Badge`];
+  const label = !generative ? s.extractiveLabel : written ? s.generativeLabel : s[`${refusal}Label`];
   const cited = answer.citations.filter((c) => c.cited);
   const others = answer.citations.filter((c) => !c.cited);
   return (
     <section className="answer" aria-live="polite">
       <div className="answer-head">
         <h2>{s.answer}</h2>
-        <span className={`badge ${generative ? "badge-gen" : "badge-ext"}`}>
-          {generative ? s.generativeBadge : s.extractiveBadge}
-        </span>
+        <span className={`badge ${written ? "badge-gen" : answer.refused ? "badge-warn" : "badge-ext"}`}>{badge}</span>
         {answer.model && <span className="muted small">{answer.model}</span>}
       </div>
-      {generative && !answer.refused ? (
-        <AnswerText answer={answer} onOpen={onOpen} />
+      <p className="mode-label small">{label}</p>
+      {written && (
+        <p className="answer-warning small" role="note">
+          {s.answerWarning}
+        </p>
+      )}
+      {written ? (
+        <AnswerText answer={answer} uiLang={uiLang} onOpen={onOpen} />
       ) : (
         <p className="lead" dir={answer.language === "ar" ? "rtl" : "ltr"}>
           {answer.text}
         </p>
       )}
-      {!generative && <p className="muted small">{s.extractiveHint}</p>}
       {answer.notes.map((note) => (
         <p key={note} className="note small">
           {note}
         </p>
       ))}
+      {answer.translated_question && (
+        <p className="muted small">
+          {s.searchedAs}: <span dir="auto">{answer.translated_question}</span>
+        </p>
+      )}
 
       {cited.length > 0 && (
         <>

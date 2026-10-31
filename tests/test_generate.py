@@ -134,7 +134,7 @@ def test_build_messages(sample_articles, sample_laws):
     assert '<article id="labour-2004:73"' in user
     assert "English (unofficial translation):" in user  # article 73 has English
     assert "amended by Decree-Law No. 18 of 2020" in user  # article 49
-    assert "Question: ما مدة الإخطار؟" in user
+    assert "<question>ما مدة الإخطار؟</question>" in user
 
 
 def test_status_line(sample_articles):

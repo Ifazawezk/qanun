@@ -13,3 +13,4 @@ eval
 tests
 *.log
 .env
+.env.*

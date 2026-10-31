@@ -74,8 +74,8 @@ def test_search_engine_methods(sample_articles, sample_laws, fake_encoder):
 
     dense = DenseIndex.build(sample_articles, fake_encoder, sample_laws)
     engine = SearchEngine(sample_articles, sample_laws.values(), dense)
-    assert engine.methods == ["bm25", "dense", "hybrid"]
-    assert engine.default_method == "hybrid"
+    assert engine.methods == ["bm25", "dense", "hybrid", "cross"]
+    assert engine.default_method == "cross"
     assert engine.search("gratuity", k=1)[0].article_id == "labour-2004:54"
     assert engine.find("labour-2004", "54").number == 54
 

@@ -9,6 +9,7 @@ from the same origin at /.
 
 from __future__ import annotations
 
+import logging
 import os
 from contextlib import asynccontextmanager
 from dataclasses import asdict
@@ -36,6 +37,20 @@ from qanun.corpus.sources import DEFAULT_LAW
 from qanun.text.normalize import detect_language
 
 DEFAULT_STATIC = ROOT / "web" / "dist"
+
+
+class DropQueryStrings(logging.Filter):
+    """Keep questions out of the access log. /search carries one in its URL, and a
+    question can hold personal details such as a name, salary or employer."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if isinstance(args, tuple) and len(args) >= 3 and isinstance(args[2], str):
+            record.args = (*args[:2], args[2].split("?", 1)[0], *args[3:])
+        return True
+
+
+logging.getLogger("uvicorn.access").addFilter(DropQueryStrings())
 
 
 def _assistant(request: Request) -> Assistant:
@@ -78,8 +93,11 @@ def create_app(
             status="ok",
             articles=sum(1 for x in a.engine.articles.values() if x.in_force),
             search_methods=a.engine.methods,
+            default_method=a.engine.default_method,
             embedding_model=dense.encoder.name if dense else None,
+            reranker=a.engine.reranker.scorer.name if a.engine.reranker else None,
             generation=a.can_generate,
+            translation=a.translator is not None,
             llm=f"{generator.client.provider}:{generator.client.model}" if generator else None,
         )
 
@@ -101,13 +119,13 @@ def create_app(
         request: Request,
         q: str = Query(min_length=1, max_length=1000),
         k: int = Query(10, ge=1, le=50),
-        method: str | None = Query(None, description="bm25, dense or hybrid"),
+        method: str | None = Query(None, description="bm25, dense, hybrid or cross"),
         law: list[str] | None = Query(None),
     ) -> SearchOut:
         a = _assistant(request)
         _check_laws(a, law)
         try:
-            hits = a.engine.search(q, k=k, method=method, laws=law)
+            hits = a.engine.search(q, k=k, method=method, laws=law, rerank=False)
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
         lang = detect_language(q)

@@ -1,7 +1,9 @@
 """Windows desktop app: runs the API on a private local port and shows it in a window.
 
 Built with desktop/build.ps1. It uses keyword search only, so it needs no model
-download and stays small enough to share as a single file.
+download and stays small enough to share as a single file. An LLM stays optional:
+put a .env next to the exe to turn on written answers and question translation.
+The key is never packed into the exe.
 """
 
 from __future__ import annotations
@@ -23,6 +25,9 @@ for name in ("stdout", "stderr"):
 BASE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[1]))
 os.environ["QANUN_ROOT"] = str(BASE)
 os.environ.setdefault("QANUN_EMBEDDING_MODEL", "none")
+if getattr(sys, "frozen", False):
+    # QANUN_ROOT is a temporary folder here, so .env has to sit next to the exe.
+    os.environ.setdefault("QANUN_ENV_FILE", str(Path(sys.executable).parent / ".env"))
 
 import uvicorn  # noqa: E402
 

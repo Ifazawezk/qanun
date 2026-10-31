@@ -36,9 +36,16 @@ class Answer:
     mode: str  # "generative" or "extractive"
     text: str  # the answer (generative) or a short lead-in (extractive)
     citations: list[Citation]
-    refused: bool = False
+    refused: bool = False  # no answer is shown
+    withheld: bool = False  # one was written, but it failed the checks
     model: str | None = None
     notes: list[str] = field(default_factory=list)
+    translated_question: str | None = None  # the extra search query, if one was used
+    removed_citations: list[str] = field(default_factory=list)  # invalid references taken out
+    flagged_references: list[str] = field(default_factory=list)  # kept: the source text mentions them
+    removed_numbers: list[float] = field(default_factory=list)  # figures found in no article
+    dropped_sentences: int = 0  # sentences removed because their evidence was invalid
+    uncited_sentences: int = 0  # claims left with no citation
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

@@ -2,8 +2,11 @@
 
     qanun eval                       # default embedding model
     qanun eval --model e5-small --model minilm
+    qanun eval --translate           # also measure query translation
+    qanun eval --reranker mmarco     # also measure a reranker
 
-Writes eval/results.json and eval/results.md.
+Writes eval/results.json and eval/results.md. Translations are kept in
+eval/translations.json, so a key is only needed to make them the first time.
 """
 
 from __future__ import annotations
@@ -12,15 +15,20 @@ import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Callable, Iterable, Sequence
+
+import numpy as np
 
 from qanun.config import ROOT
 from qanun.corpus.models import Article
-from qanun.retrieval.base import Retriever
+from qanun.retrieval.base import Hit, Retriever
+from qanun.retrieval.hybrid import reciprocal_rank_fusion
 
 EVAL_DIR = ROOT / "eval"
 QUESTIONS_PATH = EVAL_DIR / "questions.jsonl"
-KS = (1, 3, 5, 10)
+TRANSLATIONS_PATH = EVAL_DIR / "translations.json"
+CACHE_PATH = EVAL_DIR / ".cache" / "llm.jsonl"
+KS = (1, 3, 4, 5, 10)
 
 
 @dataclass(frozen=True)
@@ -108,6 +116,92 @@ def subsets(questions: Sequence[Question], articles: dict[str, Article]) -> dict
     }
 
 
+class TranslatedRetriever:
+    """Cross-language search with translations made in advance."""
+
+    def __init__(self, cross, translations: dict[str, str]):
+        self.name = "cross+translation"
+        self.cross = cross
+        self.translations = translations
+
+    def search(self, query: str, k: int = 10, laws: Iterable[str] | None = None) -> list[Hit]:
+        return self.cross.search(query, k=k, laws=laws, translation=self.translations.get(query))
+
+
+class PlainFusionRetriever:
+    """RRF over the question and its translation on both retrievers. It is measured
+    to show why it is not used: an article with text in both languages scores in
+    more lists, so the articles that exist only in Arabic stay buried."""
+
+    name = "plain-fusion"
+
+    def __init__(self, retrievers: Sequence[Retriever], translations: dict[str, str], depth: int = 50):
+        self.retrievers = list(retrievers)
+        self.translations = translations
+        self.depth = depth
+
+    def search(self, query: str, k: int = 10, laws: Iterable[str] | None = None) -> list[Hit]:
+        queries = [q for q in (query, self.translations.get(query)) if q]
+        rankings = [r.search(q, k=self.depth, laws=laws) for q in queries for r in self.retrievers]
+        return reciprocal_rank_fusion(rankings)[:k]
+
+
+class RerankedRetriever:
+    def __init__(self, base: Retriever, reranker, translations: dict[str, str] | None = None):
+        self.name = f"{base.name}+rerank"
+        self.base = base
+        self.reranker = reranker
+        self.translations = translations or {}
+
+    def search(self, query: str, k: int = 10, laws: Iterable[str] | None = None) -> list[Hit]:
+        hits = self.base.search(query, k=max(k, self.reranker.depth), laws=laws)
+        return self.reranker.rerank(query, hits, k, self.translations.get(query))
+
+
+def question_scores(result: MethodResult, questions: Sequence[Question], metric: str) -> list[float]:
+    """One value per question, for comparing two methods on the same questions."""
+    if metric == "mrr@10":
+        return [reciprocal_rank(result.per_question[q.id], q.gold) for q in questions]
+    k = int(metric.split("@")[1])
+    return [recall_at_k(result.per_question[q.id], q.gold, k) for q in questions]
+
+
+def paired_bootstrap(
+    baseline: Sequence[float], other: Sequence[float], rounds: int = 10000, seed: int = 0
+) -> tuple[float, float, float]:
+    """Mean of other - baseline with a 95% interval from resampling questions.
+    An interval that spans 0 means the difference could be noise."""
+    difference = np.asarray(other, dtype=np.float64) - np.asarray(baseline, dtype=np.float64)
+    rng = np.random.default_rng(seed)
+    picks = rng.integers(0, len(difference), size=(rounds, len(difference)))
+    means = difference[picks].mean(axis=1)
+    low, high = np.percentile(means, [2.5, 97.5])
+    return float(difference.mean()), float(low), float(high)
+
+
+def make_translations(
+    questions: Sequence[Question], translator, path: Path = TRANSLATIONS_PATH, model: str = ""
+) -> dict[str, str]:
+    """Translate what is missing and save after each question, so a run that
+    stops at a rate limit keeps what it has. Returns question text to translation."""
+    saved = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"model": model, "by_id": {}}
+    by_id = saved["by_id"]
+    missing = [q for q in questions if q.id not in by_id]
+    if missing and translator is None:
+        raise RuntimeError(f"{len(missing)} questions have no saved translation and no LLM key is set")
+    try:
+        for q in missing:
+            translation = translator.translate(q.question, q.lang)
+            if translation:
+                by_id[q.id] = translation
+    finally:
+        if missing:
+            path.write_text(
+                json.dumps(saved, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n"
+            )
+    return {q.question: by_id[q.id] for q in questions if q.id in by_id}
+
+
 def _fmt(value: float) -> str:
     return f"{value:.3f}"
 
@@ -117,6 +211,8 @@ def render_markdown(
     questions: Sequence[Question],
     articles: dict[str, Article],
     meta: dict[str, str],
+    baseline: str | None = None,
+    stages: Sequence[tuple[str, str]] = (),
 ) -> str:
     groups = subsets(questions, articles)
     lines = [
@@ -130,15 +226,39 @@ def render_markdown(
         "",
         "## All questions",
         "",
-        "| Method | Recall@1 | Recall@3 | Recall@5 | Recall@10 | MRR@10 |",
-        "| --- | --- | --- | --- | --- | --- |",
+        "| Method | Recall@1 | Recall@3 | Recall@4 | Recall@5 | Recall@10 | MRR@10 |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
     ]
     for r in results:
         m = r.metrics(groups["all"])
         lines.append(
-            f"| {r.method} | {_fmt(m['recall@1'])} | {_fmt(m['recall@3'])} | {_fmt(m['recall@5'])} "
-            f"| {_fmt(m['recall@10'])} | {_fmt(m['mrr@10'])} |"
+            f"| {r.method} | {_fmt(m['recall@1'])} | {_fmt(m['recall@3'])} | {_fmt(m['recall@4'])} "
+            f"| {_fmt(m['recall@5'])} | {_fmt(m['recall@10'])} | {_fmt(m['mrr@10'])} |"
         )
+    named = {r.method: r for r in results}
+
+    def difference_row(label: str, old: MethodResult, new: MethodResult) -> str:
+        cells = []
+        for metric in ("recall@4", "recall@5", "mrr@10"):
+            mean, low, high = paired_bootstrap(
+                question_scores(old, questions, metric), question_scores(new, questions, metric)
+            )
+            cells.append(f"{mean:+.3f} ({low:+.3f} to {high:+.3f})")
+        return f"| {label} | {' | '.join(cells)} |"
+
+    interval_note = (
+        "Mean difference with a 95% paired bootstrap interval over questions. "
+        "An interval that spans 0 could be noise."
+    )
+    header = ["| Change | Recall@4 | Recall@5 | MRR@10 |", "| --- | --- | --- | --- |"]
+    reference = named.get(baseline or "")
+    if reference is not None and len(results) > 1:
+        lines += ["", f"## Change from {reference.method}", "", interval_note, "", *header]
+        lines += [difference_row(r.method, reference, r) for r in results if r is not reference]
+    pairs = [(new, old) for new, old in stages if new in named and old in named]
+    if pairs:
+        lines += ["", "## What each stage adds", "", interval_note, "", *header]
+        lines += [difference_row(f"{new}, against {old}", named[old], named[new]) for new, old in pairs]
     for name in ("en", "ar", "en, gold only in Arabic"):
         group = groups[name]
         lines += [
@@ -171,13 +291,18 @@ def render_markdown(
     return "\n".join(lines)
 
 
-def run(models: Sequence[str], out_dir: Path = EVAL_DIR) -> list[MethodResult]:
+def run(
+    models: Sequence[str],
+    out_dir: Path = EVAL_DIR,
+    translate: Callable[[Sequence[Question]], dict[str, str]] | None = None,
+    rerankers: Sequence[str] = (),
+) -> list[MethodResult]:
     from datetime import date
 
     from qanun.corpus.store import load_articles, load_laws
     from qanun.retrieval.bm25 import BM25Index
     from qanun.retrieval.dense import load_or_build
-    from qanun.retrieval.hybrid import HybridRetriever
+    from qanun.retrieval.hybrid import CrossLanguageRetriever, HybridRetriever
 
     articles_list = load_articles()
     articles = {a.id: a for a in articles_list}
@@ -191,6 +316,48 @@ def run(models: Sequence[str], out_dir: Path = EVAL_DIR) -> list[MethodResult]:
         dense = load_or_build(model, articles_list, laws)
         results.append(run_method(f"Dense ({model})", dense, questions))
         results.append(run_method(f"Hybrid RRF (BM25 + {model})", HybridRetriever([bm25, dense]), questions))
+    baseline = f"Hybrid RRF (BM25 + {models[0]})"
+
+    # The new stages are measured on the first model only.
+    dense = load_or_build(models[0], articles_list, laws)
+    cross = CrossLanguageRetriever(bm25, dense)
+    translations = translate(questions) if translate else {}
+    results.append(run_method("Cross-language, no translation", cross, questions))
+    if translations:
+        results.append(
+            run_method("Cross-language + translation", TranslatedRetriever(cross, translations), questions)
+        )
+        # The desktop build: no embeddings, and a key is optional.
+        keyword_only = CrossLanguageRetriever(bm25)
+        results.append(run_method("BM25 + translation", TranslatedRetriever(keyword_only, translations), questions))
+        plain = PlainFusionRetriever([bm25, dense], translations)
+        results.append(run_method("Plain RRF over both queries", plain, questions))
+    stages = [
+        ("Cross-language + translation", "Plain RRF over both queries"),
+        ("Cross-language + translation", "Cross-language, no translation"),
+        ("BM25 + translation", "BM25"),
+    ]
+    for name in rerankers:
+        from qanun.retrieval.rerank import CrossEncoderScorer, Reranker
+
+        stages += [
+            (f"Cross-language + {name}", "Cross-language, no translation"),
+            (f"Cross-language + translation + {name}", "Cross-language + translation"),
+        ]
+
+        reranker = Reranker(CrossEncoderScorer(name), articles_list, laws)
+        results.append(
+            run_method(f"Cross-language + {name}", RerankedRetriever(cross, reranker), questions)
+        )
+        if translations:
+            base = TranslatedRetriever(cross, translations)
+            results.append(
+                run_method(
+                    f"Cross-language + translation + {name}",
+                    RerankedRetriever(base, reranker, translations),
+                    questions,
+                )
+            )
 
     meta = {
         "date": date.today().isoformat(),
@@ -214,6 +381,8 @@ def run(models: Sequence[str], out_dir: Path = EVAL_DIR) -> list[MethodResult]:
         json.dumps(payload, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n"
     )
     (out_dir / "results.md").write_text(
-        render_markdown(results, questions, articles, meta), encoding="utf-8", newline="\n"
+        render_markdown(results, questions, articles, meta, baseline, stages),
+        encoding="utf-8",
+        newline="\n",
     )
     return results

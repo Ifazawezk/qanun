@@ -38,7 +38,10 @@ COPY --from=web /web/dist ./web/dist
 
 # Download the embedding model and build the vector index at build time so
 # the container starts quickly and works offline.
-RUN if [ "$EMBEDDING_MODEL" != "none" ]; then qanun index --model "$EMBEDDING_MODEL"; fi \
+RUN if [ "$EMBEDDING_MODEL" != "none" ]; then \
+      qanun index --model "$EMBEDDING_MODEL" \
+      && python -c "from qanun.retrieval.rerank import CrossEncoderScorer; CrossEncoderScorer('mmarco')"; \
+    fi \
     && chown -R qanun:qanun /app
 
 ENV HF_HUB_OFFLINE=1

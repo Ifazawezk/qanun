@@ -1,9 +1,11 @@
+import logging
+
 import pytest
 from fastapi.testclient import TestClient
 
 from qanun.answer.assistant import Assistant
 from qanun.answer.generate import Generator
-from qanun.api.app import create_app
+from qanun.api.app import DropQueryStrings, create_app
 from qanun.retrieval.dense import DenseIndex
 from qanun.search import SearchEngine
 
@@ -44,8 +46,11 @@ def test_health(client):
     body = client.get("/health").json()
     assert body["status"] == "ok"
     assert body["articles"] == 5  # the repealed sample article is not counted
-    assert body["search_methods"] == ["bm25", "dense", "hybrid"]
+    assert body["search_methods"] == ["bm25", "dense", "hybrid", "cross"]
+    assert body["default_method"] == "cross"
+    assert body["reranker"] is None
     assert body["generation"] is False
+    assert body["translation"] is False
 
 
 def test_laws(client):
@@ -127,3 +132,38 @@ def test_static_ui_is_served_when_built(engine, tmp_path):
     with TestClient(app) as c:
         assert "qanun" in c.get("/").text
         assert c.get("/health").json()["status"] == "ok"
+
+
+# ---------------------------------------------------------------- privacy
+
+
+def access_record(path):
+    return logging.LogRecord(
+        "uvicorn.access", logging.INFO, "h11", 1, '%s - "%s %s HTTP/%s" %d',
+        ("127.0.0.1:5000", "GET", path, "1.1", 200), None,
+    )
+
+
+def test_questions_are_stripped_from_the_access_log():
+    record = access_record("/search?q=my+name+is+Ahmed+and+my+salary+is+900")
+    assert DropQueryStrings().filter(record) is True
+    assert record.getMessage() == '127.0.0.1:5000 - "GET /search HTTP/1.1" 200'
+
+
+def test_paths_without_a_query_are_left_alone():
+    record = access_record("/health")
+    DropQueryStrings().filter(record)
+    assert "/health" in record.getMessage()
+
+
+def test_the_filter_is_installed_on_the_access_logger():
+    assert any(isinstance(f, DropQueryStrings) for f in logging.getLogger("uvicorn.access").filters)
+
+
+def test_a_question_never_reaches_the_logs(llm_client, caplog):
+    secret = "My name is Ahmed Al-Example and my salary is 900 riyals"
+    with caplog.at_level(logging.DEBUG):
+        assert llm_client.post("/ask", json={"question": secret}).status_code == 200
+        assert llm_client.get("/search", params={"q": secret}).status_code == 200
+    logged = " ".join(r.getMessage() for r in caplog.records if r.name.startswith("qanun"))
+    assert "Ahmed" not in logged

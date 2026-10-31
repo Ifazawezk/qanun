@@ -39,8 +39,10 @@ class AnswerOut(BaseModel):
     mode: str
     text: str
     refused: bool
+    withheld: bool = False
     model: str | None
     notes: list[str]
+    translated_question: str | None = None
     citations: list[CitationOut]
 
 
@@ -129,6 +131,9 @@ class HealthOut(BaseModel):
     status: str
     articles: int
     search_methods: list[str]
+    default_method: str
     embedding_model: str | None
+    reranker: str | None
     generation: bool
+    translation: bool
     llm: str | None

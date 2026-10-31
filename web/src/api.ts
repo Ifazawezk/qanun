@@ -27,8 +27,10 @@ export interface Answer {
   mode: "extractive" | "generative";
   text: string;
   refused: boolean;
+  withheld: boolean;
   model: string | null;
   notes: string[];
+  translated_question: string | null;
   citations: Citation[];
 }
 
@@ -86,8 +88,11 @@ export interface Health {
   status: string;
   articles: number;
   search_methods: string[];
+  default_method: string;
   embedding_model: string | null;
+  reranker: string | null;
   generation: boolean;
+  translation: boolean;
   llm: string | null;
 }
 
