@@ -48,6 +48,7 @@ def test_health(client):
     assert body["default_method"] == "cross"
     assert body["reranker"] is None
     assert body["generation"] is False
+    assert body["translation"] is False
 
 
 def test_laws(client):

@@ -82,6 +82,7 @@ def create_app(
             embedding_model=dense.encoder.name if dense else None,
             reranker=a.engine.reranker.scorer.name if a.engine.reranker else None,
             generation=a.can_generate,
+            translation=a.translator is not None,
             llm=f"{generator.client.provider}:{generator.client.model}" if generator else None,
         )
 

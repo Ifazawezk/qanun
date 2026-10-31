@@ -41,6 +41,7 @@ class AnswerOut(BaseModel):
     refused: bool
     model: str | None
     notes: list[str]
+    translated_question: str | None = None
     citations: list[CitationOut]
 
 
@@ -133,4 +134,5 @@ class HealthOut(BaseModel):
     embedding_model: str | None
     reranker: str | None
     generation: bool
+    translation: bool
     llm: str | None

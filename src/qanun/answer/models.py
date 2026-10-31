@@ -39,6 +39,7 @@ class Answer:
     refused: bool = False
     model: str | None = None
     notes: list[str] = field(default_factory=list)
+    translated_question: str | None = None  # the extra search query, if one was used
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
