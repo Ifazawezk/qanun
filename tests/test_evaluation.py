@@ -182,3 +182,15 @@ def test_translated_and_reranked_retrievers_pass_the_translation_on():
     assert base.search("q")[0].article_id == "t"
     assert base.search("other")[0].article_id == "none"
     assert RerankedRetriever(base, Ranker(), {"q": "t"}).search("q")[0].article_id == "t|t"
+
+
+def test_report_shows_what_each_stage_adds(sample_articles):
+    questions = [Question("q1", "en", "t", "x", ("labour-2004:54",))]
+    old = MethodResult("old", {"q1": ["labour-2004:73"]})
+    new = MethodResult("new", {"q1": ["labour-2004:54"]})
+    articles = {a.id: a for a in sample_articles}
+    meta = {"date": "2026-01-01", "articles": "6"}
+    report = render_markdown([old, new], questions, articles, meta, stages=[("new", "old"), ("new", "missing")])
+    assert "## What each stage adds" in report
+    assert "| new, against old | +1.000" in report
+    assert "against missing" not in report

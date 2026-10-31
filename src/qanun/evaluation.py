@@ -193,6 +193,7 @@ def render_markdown(
     articles: dict[str, Article],
     meta: dict[str, str],
     baseline: str | None = None,
+    stages: Sequence[tuple[str, str]] = (),
 ) -> str:
     groups = subsets(questions, articles)
     lines = [
@@ -215,28 +216,30 @@ def render_markdown(
             f"| {r.method} | {_fmt(m['recall@1'])} | {_fmt(m['recall@3'])} | {_fmt(m['recall@4'])} "
             f"| {_fmt(m['recall@5'])} | {_fmt(m['recall@10'])} | {_fmt(m['mrr@10'])} |"
         )
-    reference = next((r for r in results if r.method == baseline), None)
+    named = {r.method: r for r in results}
+
+    def difference_row(label: str, old: MethodResult, new: MethodResult) -> str:
+        cells = []
+        for metric in ("recall@4", "recall@5", "mrr@10"):
+            mean, low, high = paired_bootstrap(
+                question_scores(old, questions, metric), question_scores(new, questions, metric)
+            )
+            cells.append(f"{mean:+.3f} ({low:+.3f} to {high:+.3f})")
+        return f"| {label} | {' | '.join(cells)} |"
+
+    interval_note = (
+        "Mean difference with a 95% paired bootstrap interval over questions. "
+        "An interval that spans 0 could be noise."
+    )
+    header = ["| Change | Recall@4 | Recall@5 | MRR@10 |", "| --- | --- | --- | --- |"]
+    reference = named.get(baseline or "")
     if reference is not None and len(results) > 1:
-        lines += [
-            "",
-            f"## Change from {reference.method}",
-            "",
-            "Mean difference with a 95% paired bootstrap interval over questions. "
-            "An interval that spans 0 could be noise.",
-            "",
-            "| Method | Recall@4 | Recall@5 | MRR@10 |",
-            "| --- | --- | --- | --- |",
-        ]
-        for r in results:
-            if r is reference:
-                continue
-            cells = []
-            for metric in ("recall@4", "recall@5", "mrr@10"):
-                mean, low, high = paired_bootstrap(
-                    question_scores(reference, questions, metric), question_scores(r, questions, metric)
-                )
-                cells.append(f"{mean:+.3f} ({low:+.3f} to {high:+.3f})")
-            lines.append(f"| {r.method} | {' | '.join(cells)} |")
+        lines += ["", f"## Change from {reference.method}", "", interval_note, "", *header]
+        lines += [difference_row(r.method, reference, r) for r in results if r is not reference]
+    pairs = [(new, old) for new, old in stages if new in named and old in named]
+    if pairs:
+        lines += ["", "## What each stage adds", "", interval_note, "", *header]
+        lines += [difference_row(f"{new}, against {old}", named[old], named[new]) for new, old in pairs]
     for name in ("en", "ar", "en, gold only in Arabic"):
         group = groups[name]
         lines += [
@@ -305,8 +308,14 @@ def run(
         results.append(
             run_method("Cross-language + translation", TranslatedRetriever(cross, translations), questions)
         )
+    stages = [("Cross-language + translation", "Cross-language, no translation")]
     for name in rerankers:
         from qanun.retrieval.rerank import CrossEncoderScorer, Reranker
+
+        stages += [
+            (f"Cross-language + {name}", "Cross-language, no translation"),
+            (f"Cross-language + translation + {name}", "Cross-language + translation"),
+        ]
 
         reranker = Reranker(CrossEncoderScorer(name), articles_list, laws)
         results.append(
@@ -344,6 +353,8 @@ def run(
         json.dumps(payload, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n"
     )
     (out_dir / "results.md").write_text(
-        render_markdown(results, questions, articles, meta, baseline), encoding="utf-8", newline="\n"
+        render_markdown(results, questions, articles, meta, baseline, stages),
+        encoding="utf-8",
+        newline="\n",
     )
     return results
