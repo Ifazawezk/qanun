@@ -419,3 +419,19 @@ def test_naming_the_law_is_not_a_wrong_figure():
     reply = "Under Law No. 14 of 2004 hours are 36 [labour-2004:73]."
     assert check_answer(reply, [LAW_73], laws={"labour-2004": Law}).numbers == []
     assert check_answer(reply, [LAW_73]).numbers == [14.0, 2004.0]
+
+
+def test_arabic_reference_without_the_definite_article_is_checked():
+    """A real reply wrote this form, which the first version of the pattern missed."""
+    reply = "حسب مادة 999 يستحق العامل إجازة [labour-2004:67]. ساعات العمل سبعة أيام [labour-2004:67]."
+    checked = check_answer(reply, [LAW_67])
+    assert "999" not in checked.text
+    assert checked.invalid == ["999"]
+
+
+def test_list_numbers_stay_with_their_text_and_are_not_figures():
+    reply = "Steps:\n1. Pay is due [labour-2004:67].\n3. It is due within seven days [labour-2004:67]."
+    checked = check_answer(reply, [LAW_67])
+    assert checked.numbers == []
+    assert checked.dropped == 0
+    assert "3. It is due" in checked.text

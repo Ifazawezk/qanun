@@ -26,7 +26,14 @@ from typing import Iterable, Sequence
 
 from qanun.answer.assistant import Assistant
 from qanun.answer.cache import BudgetExhausted, CachedClient
-from qanun.answer.generate import CITATION, SENTENCE_END, Generator, as_data, load_prompt
+from qanun.answer.generate import (
+    CITATION,
+    Generator,
+    as_data,
+    load_prompt,
+    split_sentences,
+    without_list_marker,
+)
 from qanun.answer.llm import LLMClient, LLMError
 from qanun.evaluation import EVAL_DIR, Question, load_questions
 
@@ -174,9 +181,10 @@ def claims_of(text: str) -> list[tuple[str, list[str]]]:
     claims = []
     for line in text.split("\n"):
         waiting: list[str] = []
-        for sentence in SENTENCE_END.split(line):
+        for sentence in split_sentences(line):
             ids = list(dict.fromkeys(CITATION.findall(sentence)))
             plain = re.sub(r"\s+([.,;:،؛])", r"\1", CITATION.sub("", sentence)).strip()
+            plain = without_list_marker(plain)
             if plain:
                 waiting.append(plain)
             if ids:

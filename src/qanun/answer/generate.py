@@ -100,7 +100,7 @@ LABEL_AR = rf"\(?{NUMBER}\)?{BIS_AR}"
 SEPARATOR_AR = r"\s*(?:،|,|؛|و|أو)\s*"
 PROSE_AR = re.compile(
     rf"(?:(?:المواد|المادتين|المادتان)\s*(?:رقم\s*)?(?P<many>{LABEL_AR}(?:{SEPARATOR_AR}{LABEL_AR})*)"
-    rf"|المادة\s*(?:رقم\s*)?(?P<one>{LABEL_AR}))"
+    rf"|(?:ال)?مادة\s*(?:رقم\s*)?(?P<one>{LABEL_AR}))"
 )
 # Numbers written as words cannot be matched to a label, so they fail closed.
 WORD_EN = (
@@ -110,10 +110,11 @@ WORD_EN = (
 )
 WORD_NUMBER_EN = re.compile(rf"\bArticle\s+(?:{WORD_EN})\b", re.IGNORECASE)
 WORD_NUMBER_AR = re.compile(
-    "المادة\\s+(?:ال)?(?:أولى|ثانية|ثالثة|رابعة|خامسة|سادسة|سابعة|ثامنة|تاسعة|عاشرة|حادية|مائة)"
+    "(?:ال)?مادة\\s+(?:ال)?(?:أولى|ثانية|ثالثة|رابعة|خامسة|سادسة|سابعة|ثامنة|تاسعة|عاشرة|حادية|مائة)"
 )
 ANY_LABEL = re.compile(rf"{NUMBER}(?:\s*(?:[\s-]*bis|\(?مكرر(?:ا|اً|ًا)?\)?)(?:[\s()-]*{NUMBER})?)?", re.IGNORECASE)
 SENTENCE_END = re.compile(r"(?<=[.!?؟])(?<!\bNo\.)(?<!\bArt\.)\s+")
+LIST_MARKER = re.compile(r"^\s*(?:[-*]\s*)?\d+[.)](?:\s+|$)")
 CITES_AFTER_STOP = re.compile(r"[ \t]*([.!?؟])[ \t]*((?:\[[a-z0-9-]+:[a-z0-9-]+\][ \t]*)+)")
 
 
@@ -122,6 +123,22 @@ LOOKALIKES = str.maketrans({
     "\u00a0": " ", "\u2007": " ", "\u2009": " ", "\u202f": " ", "\u200a": " ",
     "\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-", "\u2014": "-", "\u2212": "-",
 })
+
+
+def split_sentences(line: str) -> list[str]:
+    """Split a line, keeping a list marker such as "3." with the text it introduces."""
+    sentences: list[str] = []
+    for part in SENTENCE_END.split(line):
+        if sentences and LIST_MARKER.sub("", sentences[-1]) == "":
+            sentences[-1] = f"{sentences[-1]} {part}"
+        else:
+            sentences.append(part)
+    return sentences
+
+
+def without_list_marker(sentence: str) -> str:
+    """A list marker is not a figure, and "3." must not be read as the number 3."""
+    return LIST_MARKER.sub("", sentence)
 
 
 def canonical_id(text: str) -> str:
@@ -235,9 +252,9 @@ def check_answer(
     for line in normalize_citations(raw).split("\n"):
         kept = []
         pending_claims = 0  # a citation at the end of a line covers the sentences before it
-        for sentence in SENTENCE_END.split(line):
+        for sentence in split_sentences(line):
             cleaned, valid, invalid = check_citations(sentence, allowed)
-            bare = CITATION.sub("", sentence)
+            bare = without_list_marker(CITATION.sub("", sentence))
             mentions, worded = prose_labels(bare)
             unknown = [label for label in mentions if label not in labels]
             invented = [label for label in unknown if label not in quoted]

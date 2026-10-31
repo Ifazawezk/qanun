@@ -388,3 +388,9 @@ def test_llm_status_never_prints_the_key(monkeypatch, capsys):
 
 def test_question_dataclass_still_loads():
     assert answer_eval.Question is Question
+
+
+def test_a_numbered_list_gives_whole_claims():
+    """Fragments such as "1." went to the judge as claims and counted as unsupported."""
+    text = "Steps:\n1. Pay the wage [labour-2004:66].\n2. Keep a record [labour-2004:66]."
+    assert [claim for claim, _ in claims_of(text)] == ["Pay the wage.", "Keep a record."]

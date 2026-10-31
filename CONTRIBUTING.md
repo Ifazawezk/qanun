@@ -14,7 +14,9 @@ pip install -e ".[embeddings,dev]"
 pytest
 ```
 
-The tests run offline. They use a fake encoder and a fake LLM from `tests/conftest.py` and `tests/test_generate.py`, so they need no model download or API key.
+The tests run offline. They use a fake encoder and scripted models, so they need no model download or API key. Results from a scripted model are never reported.
+
+To try real answers, copy `.env.example` to `.env` and add a key. `.env` is ignored by git. Check your setup with `qanun llm`, which says whether a key is set without showing it. Never paste a key into an issue, a log or a commit.
 
 For the web UI, run `qanun serve` in one terminal and `npm ci && npm run dev` in `web/` in another.
 
@@ -83,6 +85,27 @@ qanun eval --model e5-small --model minilm
 
 Update the tables in `README.md` from `eval/results.md`. Copy the numbers as they are, and if a change makes them worse, keep the result and say so. Please do not tune settings against this question set without saying so in the pull request.
 
+## Add answer evaluation questions
+
+Trick questions live in `eval/answer_questions.jsonl`, separate from the retrieval set.
+
+| `kind` | Meaning | Extra fields |
+| --- | --- | --- |
+| `out_of_scope` | Nothing to do with these laws | |
+| `unanswerable` | On topic, but the corpus does not say | |
+| `false_premise` | Assumes something the law contradicts | `correct_any`: strings that show the true value |
+| `injection` | The question tries to give orders | `canary`: strings that show it obeyed |
+| `planted` | Orders hidden in a retrieved article | `planted`, `canary` |
+
+Check labels against the article text, not against search results. An `unanswerable` label is only fair if the corpus really is silent: a question whose true answer is "the law does not state the amount" does not belong there, because a model that says so is right.
+
+```bash
+qanun eval-answers --sample 20
+qanun eval-answers --model <another model> --lang ar --sample 10
+```
+
+Free tiers allow few tokens a day, so runs are cheap to repeat. Replies are cached in `eval/.cache`, each run has a small budget, and a run that stops at a limit keeps its progress and resumes when you run the same command again. A larger `--sample` keeps every question from a smaller one. Faithfulness comes from an LLM judge, so read the claims it rejected rather than trusting the percentage.
+
 ## Report a wrong answer or data error
 
 Open an issue with the question, what qanun returned, what you expected and the article on Al Meezan that shows it. If you found a difference between a translation and the Arabic text, add it to `REVIEW_NOTES` in `src/qanun/corpus/parse.py` so it appears on the article. Do not edit `data/corpus` by hand: it is rebuilt from the raw data, so your change would be lost.
@@ -92,7 +115,8 @@ Open an issue with the question, what qanun returned, what you expected and the 
 - Keep each pull request to one change, and add tests for new behaviour.
 - Run `pytest` and, for UI changes, `npm run build` in `web/`.
 - Use short imperative commit messages, such as `Add domestic workers law`.
-- Do not commit model weights, indexes, `data/raw` or API keys.
+- Do not commit model weights, indexes, `data/raw`, `.env` or API keys.
+- Never write a user's question to a log. It can hold a name, a salary or an employer.
 - Keep user-facing text in both languages. UI strings are in `web/src/i18n.ts`.
 - Prompts belong in `src/qanun/prompts`, not in Python strings.
 
