@@ -40,6 +40,9 @@ class Answer:
     model: str | None = None
     notes: list[str] = field(default_factory=list)
     translated_question: str | None = None  # the extra search query, if one was used
+    removed_citations: list[str] = field(default_factory=list)  # invalid references taken out
+    dropped_sentences: int = 0  # sentences removed because their evidence was invalid
+    uncited_sentences: int = 0  # claims left with no citation
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
