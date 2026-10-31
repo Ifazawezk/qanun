@@ -10,11 +10,11 @@ from qanun.corpus.store import load_articles, load_laws
 from qanun.retrieval.base import Hit, Retriever
 from qanun.retrieval.bm25 import BM25Index
 from qanun.retrieval.dense import DEFAULT_MODEL, DenseIndex, load_or_build
-from qanun.retrieval.hybrid import HybridRetriever
+from qanun.retrieval.hybrid import CrossLanguageRetriever, HybridRetriever
 
 log = logging.getLogger("qanun.search")
 
-METHODS = ("bm25", "dense", "hybrid")
+METHODS = ("bm25", "dense", "hybrid", "cross")
 
 
 class SearchEngine:
@@ -29,6 +29,7 @@ class SearchEngine:
         self.bm25 = BM25Index.from_articles(self.articles.values(), self.laws)
         self.dense = dense
         self.hybrid = HybridRetriever([self.bm25, dense]) if dense else None
+        self.cross = CrossLanguageRetriever(self.bm25, dense)
 
     @classmethod
     def load(cls, model: str | None = DEFAULT_MODEL) -> "SearchEngine":
@@ -36,21 +37,22 @@ class SearchEngine:
         model cannot be loaded, only BM25 is available."""
         articles = load_articles()
         laws = load_laws()
+        by_key = {law.key: law for law in laws}
         dense = None
         if model:
             try:
-                dense = load_or_build(model, articles, {law.key: law for law in laws})
+                dense = load_or_build(model, articles, by_key)
             except ImportError as exc:
                 log.warning("dense retrieval disabled, missing dependency: %s", exc)
         return cls(articles, laws, dense)
 
     @property
     def methods(self) -> list[str]:
-        return ["bm25", "dense", "hybrid"] if self.dense else ["bm25"]
+        return ["bm25", "dense", "hybrid", "cross"] if self.dense else ["bm25"]
 
     @property
     def default_method(self) -> str:
-        return "hybrid" if self.dense else "bm25"
+        return "cross" if self.dense else "bm25"
 
     def retriever(self, method: str | None = None) -> Retriever:
         method = method or self.default_method
@@ -60,11 +62,22 @@ class SearchEngine:
             return self.dense
         if method == "hybrid" and self.hybrid:
             return self.hybrid
+        if method == "cross" and self.dense:
+            return self.cross
         raise ValueError(f"search method {method!r} is not available; use one of {self.methods}")
 
     def search(
-        self, query: str, k: int = 10, method: str | None = None, laws: Iterable[str] | None = None
+        self,
+        query: str,
+        k: int = 10,
+        method: str | None = None,
+        laws: Iterable[str] | None = None,
+        translation: str | None = None,
     ) -> list[Hit]:
+        """A translation applies to the default search, and also works with BM25
+        alone, which is how the desktop build reaches Arabic-only articles."""
+        if translation and method in (None, "cross"):
+            return self.cross.search(query, k=k, laws=laws, translation=translation)
         return self.retriever(method).search(query, k=k, laws=laws)
 
     def article(self, article_id: str) -> Article | None:

@@ -107,6 +107,7 @@ class DenseIndex:
         self.doc_laws = [article_laws.get(d, "") for d in self.doc_ids]
         position = {doc: i for i, doc in enumerate(self.doc_ids)}
         self._passage_doc = np.array([position[p.article_id] for p in passages], dtype=np.int64)
+        self._passage_lang = np.array([p.lang for p in passages])
 
     @staticmethod
     def make_passages(
@@ -178,15 +179,23 @@ class DenseIndex:
         vector = self.encoder.encode_queries([query])[0]
         return self.embeddings @ vector
 
-    def scores(self, query: str) -> np.ndarray:
-        """Article score = best cosine similarity among its passages."""
+    def scores(self, query: str, lang: str | None = None) -> np.ndarray:
+        """Article score = best cosine similarity among its passages, optionally
+        only those in one language. An article with none scores -inf."""
         per_passage = self.passage_scores(query)
+        if lang is not None:
+            per_passage = np.where(self._passage_lang == lang, per_passage, -np.inf)
         scores = np.full(len(self.doc_ids), -np.inf)
         np.maximum.at(scores, self._passage_doc, per_passage)
         return scores
 
-    def search(self, query: str, k: int = 10, laws: Iterable[str] | None = None) -> list[Hit]:
-        return top_hits(self.doc_ids, self.scores(query), k, law_mask(self.doc_laws, laws))
+    def search(
+        self, query: str, k: int = 10, laws: Iterable[str] | None = None, lang: str | None = None
+    ) -> list[Hit]:
+        # Fusion only sees ranks, so in a per-language list a passage with no similarity
+        # at all must be left out, or it would earn the credit of a real match.
+        min_score = 0.0 if lang else None
+        return top_hits(self.doc_ids, self.scores(query, lang), k, law_mask(self.doc_laws, laws), min_score)
 
 
 def index_dir_for(model: str, root: Path | None = None) -> Path:

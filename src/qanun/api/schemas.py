@@ -129,6 +129,7 @@ class HealthOut(BaseModel):
     status: str
     articles: int
     search_methods: list[str]
+    default_method: str
     embedding_model: str | None
     generation: bool
     llm: str | None
