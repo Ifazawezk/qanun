@@ -331,6 +331,10 @@ def run(
     """Run until done or until the budget or a provider limit stops it. Whatever
     finished is saved, and the next run repeats it from the cache at no cost."""
     articles = assistant.engine.articles
+    previous = _saved_ids(out_path)
+    # Questions already answered come first: they are cached, so a limit can only stop
+    # the run after it has rebuilt everything it had before.
+    items = sorted(items, key=lambda item: item.id not in previous)
     records: list[Record] = []
     stopped = None
     try:
@@ -357,8 +361,17 @@ def run(
         "records": [asdict(r) for r in records],
     }
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    if stopped and len(records) < len(previous):
+        # Never replace fuller results with a run that was cut short.
+        out_path = out_path.with_suffix(".partial.json")
     out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n")
     return payload
+
+
+def _saved_ids(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    return {record["id"] for record in json.loads(path.read_text(encoding="utf-8"))["records"]}
 
 
 def slug(text: str) -> str:

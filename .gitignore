@@ -39,3 +39,6 @@ web/dist/
 build-desktop/
 dist-desktop/
 desktop/qanun.ico
+
+# Runs cut short by a limit
+eval/answers/*.partial.json
