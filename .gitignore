@@ -15,6 +15,7 @@ data/raw/
 data/index/
 data/corpus/*.parquet
 models/
+eval/.cache/
 *.npy
 *.safetensors
 *.bin
@@ -25,8 +26,10 @@ web/node_modules/
 web/dist/
 *.tsbuildinfo
 
-# Local settings
+# Local settings. Keys live in .env and must never be committed.
 .env
+.env.*
+!.env.example
 *.log
 .DS_Store
 .vscode/
