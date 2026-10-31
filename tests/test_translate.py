@@ -2,7 +2,7 @@ import pytest
 
 from qanun.answer.assistant import Assistant
 from qanun.answer.cache import Budget, BudgetExhausted, CachedClient, ResponseCache
-from qanun.answer.llm import LLMError
+from qanun.answer.llm import LLMError, RateLimited
 from qanun.answer.translate import LLMTranslator, clean_translation, other_language
 from qanun.retrieval.dense import DenseIndex
 from qanun.search import SearchEngine
@@ -153,3 +153,17 @@ def test_cache_file_holds_no_key(tmp_path):
     path = tmp_path / "c.jsonl"
     CachedClient(FakeLLM("reply"), ResponseCache(path), Budget()).complete("s", "u")
     assert set(ResponseCache(path).entries.popitem()[1]) == {"key", "model", "text", "tokens"}
+
+
+def test_budget_stops_the_run_instead_of_degrading_quietly(tmp_path):
+    """The translator catches LLMError, so this must not be one."""
+    client = CachedClient(FakeLLM("ترجمة"), ResponseCache(tmp_path / "c.jsonl"), Budget(requests=0))
+    with pytest.raises(BudgetExhausted):
+        LLMTranslator(client).translate("hello", "en")
+
+
+def test_a_rate_limit_stops_an_evaluation_run(tmp_path):
+    llm = FakeLLM(error=RateLimited("daily limit", 3600))
+    client = CachedClient(llm, ResponseCache(tmp_path / "c.jsonl"), Budget())
+    with pytest.raises(BudgetExhausted, match="daily limit"):
+        LLMTranslator(client).translate("hello", "en")

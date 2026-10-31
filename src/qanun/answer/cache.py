@@ -15,11 +15,16 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from qanun.answer.llm import LLMClient
+from qanun.answer.llm import LLMClient, RateLimited
 
 
 class BudgetExhausted(RuntimeError):
-    """This run has spent the requests or tokens it was allowed."""
+    """This run must stop: it spent its budget or reached the provider's limit.
+
+    Deliberately not an LLMError. Those are caught and degrade to a fallback, which
+    is right for a live request but in an evaluation would score the fallback as
+    if the model had produced it.
+    """
 
 
 @dataclass
@@ -89,7 +94,10 @@ class CachedClient:
             return hit["text"]
         self.budget.check()
         self.budget.requests_used += 1
-        text = self.client.complete(system, user)
+        try:
+            text = self.client.complete(system, user)
+        except RateLimited as exc:
+            raise BudgetExhausted(f"stopped at the provider's limit: {exc}") from exc
         usage = getattr(self.client, "last_usage", None) or {}
         tokens = int(usage.get("total_tokens") or 0)
         self.budget.tokens_used += tokens
