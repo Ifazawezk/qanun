@@ -3,8 +3,7 @@
 A cross-encoder reads the question and a passage together, which is slower but
 more precise than comparing embeddings. It needs the embeddings extra, so the
 import stays inside the class and the desktop build, which leaves out PyTorch,
-is not affected. Set QANUN_RERANKER to turn it on; see the README for whether
-that is worth doing.
+is not affected. See reranker_model in app_factory.py for when it is on.
 """
 
 from __future__ import annotations
@@ -22,10 +21,7 @@ from qanun.text.normalize import detect_language
 
 log = logging.getLogger("qanun.rerank")
 
-RERANKER_PRESETS = {
-    "mmarco": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
-    "bge-m3": "BAAI/bge-reranker-v2-m3",
-}
+RERANKER_PRESETS = {"mmarco": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"}
 RERANK_DEPTH = 20
 MAX_CHARS = 900
 

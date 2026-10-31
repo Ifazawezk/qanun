@@ -82,7 +82,7 @@ def cmd_eval_answers(args: argparse.Namespace) -> None:
     from qanun.answer.generate import Generator
     from qanun.answer.llm import client_from_env
     from qanun.answer.translate import LLMTranslator
-    from qanun.app_factory import embedding_model
+    from qanun.app_factory import embedding_model, reranker_model
     from qanun.evaluation import CACHE_PATH
     from qanun.search import SearchEngine
 
@@ -100,7 +100,8 @@ def cmd_eval_answers(args: argparse.Namespace) -> None:
         judge_client = client_from_env(fast=True, model=args.judge_model, max_wait=70)
         judge, judge_model = CachedClient(judge_client, cache, budget), judge_client.model
 
-    engine = SearchEngine.load(embedding_model())
+    embedding = embedding_model()
+    engine = SearchEngine.load(embedding, reranker_model(embedding, True))
     generator = Generator(answers, engine.laws, args.max_article_chars)
     assistant = Assistant(engine, generator, translator=translator)
     items = answer_eval.choose(answer_eval.load_items(), args.sample, args.lang)
@@ -204,7 +205,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("eval", help="evaluate BM25, dense and hybrid retrieval")
     p.add_argument("--model", action="append", help="embedding model(s) to compare")
     p.add_argument("--translate", action="store_true", help="also measure query translation")
-    p.add_argument("--reranker", action="append", help="reranker(s) to measure: mmarco, bge-m3 or a model id")
+    p.add_argument("--reranker", action="append", help="reranker(s) to measure: mmarco or a model id")
     p.add_argument("--budget", type=int, default=70, help="most LLM requests to spend on translation")
     p.set_defaults(func=cmd_eval)
     return parser

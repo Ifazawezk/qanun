@@ -125,7 +125,7 @@ def create_app(
         a = _assistant(request)
         _check_laws(a, law)
         try:
-            hits = a.engine.search(q, k=k, method=method, laws=law)
+            hits = a.engine.search(q, k=k, method=method, laws=law, rerank=False)
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
         lang = detect_language(q)

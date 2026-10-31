@@ -51,8 +51,10 @@ class SearchEngine:
         if reranker:
             try:
                 ranker = Reranker(CrossEncoderScorer(reranker), articles, by_key)
-            except ImportError as exc:
-                log.warning("reranker disabled, missing dependency: %s", exc)
+            except Exception as exc:
+                # It is optional and may be missing from the cache or unable to download,
+                # and neither should stop search from starting.
+                log.warning("reranker disabled: %s", type(exc).__name__)
         return cls(articles, laws, dense, ranker)
 
     @property
@@ -82,16 +84,19 @@ class SearchEngine:
         method: str | None = None,
         laws: Iterable[str] | None = None,
         translation: str | None = None,
+        rerank: bool = True,
     ) -> list[Hit]:
         """A translation applies to the default search, and also works with BM25
-        alone, which is how the desktop build reaches Arabic-only articles."""
-        depth = max(k, RERANK_DEPTH) if self.reranker else k
+        alone, which is how the desktop build reaches Arabic-only articles. The
+        reranker applies to the default search only, so a named method stays pure."""
+        ranker = self.reranker if rerank and method is None else None
+        depth = max(k, RERANK_DEPTH) if ranker else k
         if translation and method in (None, "cross"):
             hits = self.cross.search(query, k=depth, laws=laws, translation=translation)
         else:
             hits = self.retriever(method).search(query, k=depth, laws=laws)
-        if self.reranker:
-            return self.reranker.rerank(query, hits, k, translation)
+        if ranker:
+            return ranker.rerank(query, hits, k, translation)
         return hits[:k]
 
     def article(self, article_id: str) -> Article | None:

@@ -3,6 +3,7 @@ import sys
 
 import numpy as np
 
+from qanun.app_factory import reranker_model
 from qanun.retrieval.base import Hit
 from qanun.retrieval.dense import DenseIndex
 from qanun.retrieval.rerank import Reranker
@@ -70,3 +71,41 @@ def test_reranker_module_does_not_import_pytorch():
         "sys.exit(1 if 'torch' in sys.modules or 'sentence_transformers' in sys.modules else 0)"
     )
     assert subprocess.run([sys.executable, "-c", code], capture_output=True).returncode == 0
+
+
+# ---------------------------------------------------------------- when it is on
+
+
+def test_reranker_defaults_follow_the_measurements():
+    assert reranker_model("e5-small", translating=True, settings={}) == "mmarco"
+    assert reranker_model("e5-small", translating=False, settings={}) is None
+
+
+def test_desktop_build_never_loads_a_reranker():
+    assert reranker_model(None, translating=True, settings={}) is None
+
+
+def test_reranker_can_be_set_or_turned_off():
+    assert reranker_model("e5-small", True, {"QANUN_RERANKER": "off"}) is None
+    assert reranker_model("e5-small", False, {"QANUN_RERANKER": "some/model"}) == "some/model"
+
+
+def test_a_named_method_is_not_reranked(sample_articles, sample_laws, fake_encoder):
+    dense = DenseIndex.build(sample_articles, fake_encoder, sample_laws)
+    scorer = FakeScorer("nothing")
+    engine = SearchEngine(sample_articles, sample_laws.values(), dense, Reranker(scorer, sample_articles, sample_laws))
+    engine.search("gratuity", method="hybrid")
+    engine.search("gratuity", rerank=False)
+    assert scorer.pairs == []
+    engine.search("gratuity")
+    assert scorer.pairs
+
+
+def test_a_reranker_that_cannot_load_leaves_search_working(monkeypatch):
+    def fail(name):
+        raise OSError("model is not available")
+
+    monkeypatch.setattr("qanun.search.CrossEncoderScorer", fail)
+    engine = SearchEngine.load(None, "mmarco")
+    assert engine.reranker is None
+    assert engine.search("gratuity", k=1)
