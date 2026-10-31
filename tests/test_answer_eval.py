@@ -323,6 +323,20 @@ def test_rate_limit_stop_saves_what_finished_and_is_not_scored(engine, tmp_path)
     assert payload["summary"]["generation_failed"] == 0
 
 
+def test_a_run_cut_short_does_not_replace_fuller_results(engine, tmp_path):
+    assert run(engine, ScriptedLLM(), tmp_path, ITEMS[:2])["meta"]["finished"] == 2
+    payload = run(engine, ScriptedLLM(error=RateLimited("daily limit", 3600), fail_after=0), tmp_path, [ITEMS[2]])
+    assert payload["meta"]["finished"] == 0
+    assert json.loads((tmp_path / "out.json").read_text(encoding="utf-8"))["meta"]["finished"] == 2
+    assert (tmp_path / "out.partial.json").exists()
+
+
+def test_questions_with_saved_results_run_first(engine, tmp_path):
+    run(engine, ScriptedLLM(), tmp_path, [ITEMS[2]])
+    payload = run(engine, ScriptedLLM(), tmp_path, ITEMS)
+    assert payload["records"][0]["id"] == "q3"
+
+
 def test_second_run_resumes_without_repeating_requests(engine, tmp_path):
     first = ScriptedLLM()
     run(engine, first, tmp_path, ITEMS, Budget(requests=2))
