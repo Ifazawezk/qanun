@@ -326,3 +326,9 @@ def test_reasoning_options_by_model():
     assert request_options("groq", "qwen/qwen3.8-27b") == {"reasoning_format": "hidden"}
     assert request_options("groq", "allam-2-7b") == {}
     assert request_options("openrouter", "openai/gpt-oss-120b") == {}
+
+
+def test_max_output_applies_to_one_client_only():
+    env = {"QANUN_LLM_API_KEY": SECRET}
+    assert client_from_env(env, model="allam-2-7b", max_output=500).max_tokens == 500
+    assert client_from_env(env).max_tokens == 1500

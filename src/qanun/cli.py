@@ -87,7 +87,7 @@ def cmd_eval_answers(args: argparse.Namespace) -> None:
     from qanun.search import SearchEngine
 
     # Long enough to sit out the per-minute window, never long enough to outlast a daily limit.
-    client = client_from_env(model=args.model, max_wait=70)
+    client = client_from_env(model=args.model, max_wait=70, max_output=args.max_tokens)
     if client is None:
         sys.exit("No LLM key is set, so the answer evaluation was not run and no numbers were written.")
     cache = ResponseCache(CACHE_PATH)
@@ -194,6 +194,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--tokens", type=int, default=60000, help="most tokens this run may spend")
     p.add_argument("--daily-tokens", type=int, default=180000, help="most tokens per model per day")
     p.add_argument("--max-article-chars", type=int, help="cut articles, for small context windows")
+    p.add_argument("--max-tokens", type=int, help="reply limit for the answer model only")
     p.set_defaults(func=cmd_eval_answers)
 
     p = sub.add_parser("serve", help="run the HTTP API (and the web UI if it is built)")

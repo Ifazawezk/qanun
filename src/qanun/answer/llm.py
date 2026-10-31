@@ -278,11 +278,13 @@ def client_from_env(
     fast: bool = False,
     model: str | None = None,
     max_wait: float | None = None,
+    max_output: int | None = None,
 ) -> LLMClient | None:
     """Build a client from environment variables, or None when no key is set.
 
-    fast picks the cheap model, and model overrides both. Each client has its own
-    limiter because Groq sets limits per model.
+    fast picks the cheap model, and model overrides both. max_output limits this
+    client's replies, for a model with a small context window. Each client has its
+    own limiter because Groq sets limits per model.
     """
     env = os.environ if env is None else env
     provider = _provider(env)
@@ -291,7 +293,7 @@ def client_from_env(
 
     chosen = model or model_from_env(env, fast)
     timeout = float(env.get("QANUN_LLM_TIMEOUT", "60"))
-    tokens = env.get("QANUN_LLM_MAX_TOKENS", "").strip()
+    tokens = str(max_output or "") or env.get("QANUN_LLM_MAX_TOKENS", "").strip()
     max_tokens = int(tokens or 800)
     wait = max_wait if max_wait is not None else float(env.get("QANUN_LLM_MAX_WAIT", "30"))
     limiter = RateLimiter(max_wait=wait)
