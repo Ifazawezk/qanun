@@ -13,9 +13,10 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
-from qanun.answer.llm import LLMClient, RateLimited
+from qanun.answer.llm import LLMClient, LLMError, RateLimited
 
 
 class BudgetExhausted(RuntimeError):
@@ -29,10 +30,13 @@ class BudgetExhausted(RuntimeError):
 
 @dataclass
 class Budget:
-    """Limits for one run. Replies from the cache cost nothing."""
+    """Limits for one run, plus a limit per model per day, which keeps a free tier's
+    daily allowance safe because providers do not report what is left of it.
+    Replies from the cache cost nothing."""
 
     requests: int | None = None
     tokens: int | None = None
+    daily_tokens: int | None = None
     requests_used: int = 0
     tokens_used: int = 0
     cache_hits: int = 0
@@ -42,6 +46,10 @@ class Budget:
             raise BudgetExhausted(f"request budget of {self.requests} is spent")
         if self.tokens is not None and self.tokens_used >= self.tokens:
             raise BudgetExhausted(f"token budget of {self.tokens} is spent")
+
+
+def utc_day() -> str:
+    return datetime.now(timezone.utc).date().isoformat()
 
 
 class ResponseCache:
@@ -67,8 +75,15 @@ class ResponseCache:
     def get(self, key: str) -> dict | None:
         return self.entries.get(key)
 
+    def spent_today(self, model: str) -> int:
+        today = utc_day()
+        return sum(
+            row.get("tokens", 0) for row in self.entries.values()
+            if row.get("model") == model and row.get("day") == today
+        )
+
     def put(self, key: str, model: str, text: str, tokens: int) -> None:
-        row = {"key": key, "model": model, "text": text, "tokens": tokens}
+        row = {"key": key, "model": model, "text": text, "tokens": tokens, "day": utc_day()}
         self.entries[key] = row
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8", newline="\n") as fh:
@@ -85,6 +100,7 @@ class CachedClient:
         self.budget = budget
         self.provider = client.provider
         self.model = client.model
+        self.last_error: str | None = None
 
     def complete(self, system: str, user: str) -> str:
         key = ResponseCache.key(self.provider, self.model, system, user)
@@ -93,11 +109,17 @@ class CachedClient:
             self.budget.cache_hits += 1
             return hit["text"]
         self.budget.check()
+        daily = self.budget.daily_tokens
+        if daily is not None and self.cache.spent_today(self.model) >= daily:
+            raise BudgetExhausted(f"daily token cap of {daily} for {self.model} is spent")
         self.budget.requests_used += 1
         try:
             text = self.client.complete(system, user)
         except RateLimited as exc:
             raise BudgetExhausted(f"stopped at the provider's limit: {exc}") from exc
+        except LLMError as exc:
+            self.last_error = str(exc)
+            raise
         usage = getattr(self.client, "last_usage", None) or {}
         tokens = int(usage.get("total_tokens") or 0)
         self.budget.tokens_used += tokens

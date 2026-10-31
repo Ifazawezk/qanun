@@ -75,6 +75,64 @@ def cmd_eval(args: argparse.Namespace) -> None:
     print(f"wrote {EVAL_DIR / 'results.md'}")
 
 
+def cmd_eval_answers(args: argparse.Namespace) -> None:
+    from qanun import answer_eval
+    from qanun.answer.assistant import Assistant
+    from qanun.answer.cache import Budget, CachedClient, ResponseCache
+    from qanun.answer.generate import Generator
+    from qanun.answer.llm import client_from_env
+    from qanun.answer.translate import LLMTranslator
+    from qanun.app_factory import embedding_model
+    from qanun.evaluation import CACHE_PATH
+    from qanun.search import SearchEngine
+
+    # Long enough to sit out the per-minute window, never long enough to outlast a daily limit.
+    client = client_from_env(model=args.model, max_wait=70)
+    if client is None:
+        sys.exit("No LLM key is set, so the answer evaluation was not run and no numbers were written.")
+    cache = ResponseCache(CACHE_PATH)
+    budget = Budget(requests=args.budget, tokens=args.tokens, daily_tokens=args.daily_tokens)
+    answers = CachedClient(client, cache, budget)
+    translator = LLMTranslator(CachedClient(client_from_env(fast=True, max_wait=70), cache, budget))
+    judge = None
+    judge_model = None
+    if not args.no_judge:
+        judge_client = client_from_env(fast=True, model=args.judge_model, max_wait=70)
+        judge, judge_model = CachedClient(judge_client, cache, budget), judge_client.model
+
+    engine = SearchEngine.load(embedding_model())
+    generator = Generator(answers, engine.laws, args.max_article_chars)
+    assistant = Assistant(engine, generator, translator=translator)
+    items = answer_eval.choose(answer_eval.load_items(), args.sample, args.lang)
+    name = args.name or answer_eval.slug(f"{client.model}-{args.lang or 'all'}")
+    meta = {
+        "name": name, "provider": client.provider, "model": client.model, "judge_model": judge_model,
+        "language": args.lang or "all", "max_article_chars": args.max_article_chars,
+    }
+    payload = answer_eval.run(items, assistant, answers, judge, answer_eval.RESULTS_DIR / f"{name}.json", meta)
+    answer_eval.write_report()
+    m = payload["meta"]
+    print(f"{name}: finished {m['finished']} of {m['planned']} questions")
+    print(f"this run: {m['requests_this_run']} requests, {m['tokens_this_run']} tokens, {m['cache_hits_this_run']} cached")
+    if m["stopped_by"]:
+        print(f"stopped: {m['stopped_by']}. Run the same command later to resume.")
+    print(f"wrote {answer_eval.REPORT_PATH}")
+
+
+def cmd_llm(args: argparse.Namespace) -> None:
+    """Show the LLM settings. It reports whether a key is set, and never the key."""
+    import os
+
+    from qanun.answer.llm import client_from_env, model_from_env
+
+    client = client_from_env()
+    print(f"key set: {'yes' if client else 'no'}")
+    print(f"provider: {client.provider if client else 'none'}")
+    print(f"answer model: {model_from_env() or 'none'}")
+    print(f"fast model: {model_from_env(fast=True) or 'none'}")
+    print(f"translation: {os.environ.get('QANUN_TRANSLATE', 'on') if client else 'off'}")
+
+
 def cmd_ask(args: argparse.Namespace) -> None:
     from qanun.answer.highlight import render_marked
     from qanun.app_factory import build_assistant
@@ -120,6 +178,22 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--mode", default="auto", choices=["auto", "extractive", "generative"])
     p.add_argument("--model", action="append", help="embedding model")
     p.set_defaults(func=cmd_ask)
+
+    p = sub.add_parser("llm", help="show the LLM settings without revealing the key")
+    p.set_defaults(func=cmd_llm)
+
+    p = sub.add_parser("eval-answers", help="evaluate generated answers against a real model")
+    p.add_argument("--sample", type=int, help="questions to run; a larger sample keeps the smaller one")
+    p.add_argument("--lang", choices=["en", "ar"], help="only questions in this language")
+    p.add_argument("--model", help="answer model to compare")
+    p.add_argument("--judge-model", help="judge model; defaults to the fast model")
+    p.add_argument("--no-judge", action="store_true", help="skip the LLM judge")
+    p.add_argument("--name", help="name of this run in the report")
+    p.add_argument("--budget", type=int, default=40, help="most requests this run may make")
+    p.add_argument("--tokens", type=int, default=60000, help="most tokens this run may spend")
+    p.add_argument("--daily-tokens", type=int, default=180000, help="most tokens per model per day")
+    p.add_argument("--max-article-chars", type=int, help="cut articles, for small context windows")
+    p.set_defaults(func=cmd_eval_answers)
 
     p = sub.add_parser("serve", help="run the HTTP API (and the web UI if it is built)")
     p.add_argument("--host", default="127.0.0.1")

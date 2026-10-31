@@ -152,7 +152,7 @@ def test_a_failed_call_is_not_cached(tmp_path):
 def test_cache_file_holds_no_key(tmp_path):
     path = tmp_path / "c.jsonl"
     CachedClient(FakeLLM("reply"), ResponseCache(path), Budget()).complete("s", "u")
-    assert set(ResponseCache(path).entries.popitem()[1]) == {"key", "model", "text", "tokens"}
+    assert set(ResponseCache(path).entries.popitem()[1]) == {"key", "model", "text", "tokens", "day"}
 
 
 def test_budget_stops_the_run_instead_of_degrading_quietly(tmp_path):
@@ -167,3 +167,35 @@ def test_a_rate_limit_stops_an_evaluation_run(tmp_path):
     client = CachedClient(llm, ResponseCache(tmp_path / "c.jsonl"), Budget())
     with pytest.raises(BudgetExhausted, match="daily limit"):
         LLMTranslator(client).translate("hello", "en")
+
+
+def test_daily_cap_counts_earlier_runs(tmp_path):
+    path = tmp_path / "c.jsonl"
+    CachedClient(FakeLLM("reply"), ResponseCache(path), Budget()).complete("s", "first")
+    client = CachedClient(FakeLLM("reply"), ResponseCache(path), Budget(daily_tokens=5))
+    with pytest.raises(BudgetExhausted, match="daily token cap"):
+        client.complete("s", "second")
+
+
+def test_daily_cap_is_per_model(tmp_path):
+    path = tmp_path / "c.jsonl"
+    CachedClient(FakeLLM("reply"), ResponseCache(path), Budget()).complete("s", "first")
+    other = FakeLLM("reply")
+    other.model = "other-model"
+    assert CachedClient(other, ResponseCache(path), Budget(daily_tokens=5)).complete("s", "x") == "reply"
+
+
+def test_yesterdays_spending_does_not_count(tmp_path):
+    path = tmp_path / "c.jsonl"
+    cache = ResponseCache(path)
+    CachedClient(FakeLLM("reply"), cache, Budget()).complete("s", "first")
+    for row in cache.entries.values():
+        row["day"] = "2000-01-01"
+    assert cache.spent_today("test-model") == 0
+
+
+def test_an_ordinary_failure_is_recorded_and_raised(tmp_path):
+    client = CachedClient(FakeLLM(error=LLMError("HTTP 400")), ResponseCache(tmp_path / "c.jsonl"), Budget())
+    with pytest.raises(LLMError):
+        client.complete("s", "u")
+    assert client.last_error == "HTTP 400"
