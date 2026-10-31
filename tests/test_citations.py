@@ -183,13 +183,14 @@ def test_citation_after_the_full_stop_stays_with_its_sentence():
 
 
 def test_no_dot_in_a_law_name_does_not_split_a_sentence():
-    checked = check_answer("Under Law No. 14 of 2004 pay continues [labour-2004:54].", ARTICLES)
+    question = "What does Law No. 14 of 2004 say?"
+    checked = check_answer("Under Law No. 14 of 2004 pay continues [labour-2004:54].", ARTICLES, question)
     assert checked.text == "Under Law No. 14 of 2004 pay continues [labour-2004:54]."
     assert checked.uncited == 0
 
 
 def test_uncited_claims_are_counted_but_short_lead_ins_are_not():
-    checked = check_answer("Yes. Workers also get a bonus every year. Pay continues [labour-2004:54].", ARTICLES)
+    checked = check_answer("Yes.\nWorkers also get a bonus every year.\nPay continues [labour-2004:54].", ARTICLES)
     assert checked.uncited == 1
 
 
@@ -304,3 +305,117 @@ def test_long_articles_can_be_cut_for_small_context_windows(sample_laws):
     assert "English" not in block
     full = format_articles([article], sample_laws)
     assert "[cut for length]" not in full and "English" in full
+
+
+# ---------------------------------------------------------------- what real models wrote
+
+
+LAW_67 = make_article(
+    "67",
+    "وجب أداء الأجر إلا إذا ترك العمل دون الإخطار المنصوص عليه في المادة (49) من هذا القانون خلال سبعة أيام.",
+    "The Employer shall pay unless the Worker left without notice as provided in Article 49, within seven days.",
+)
+
+
+def test_gpt_oss_reply_quoting_a_cross_reference_keeps_the_answer():
+    """Article 67 itself says Article 49. This reply was right, and the first version
+    of the check threw it away and refused."""
+    reply = (
+        "If the worker left without giving the notice required in Article 49, the employer "
+        "must pay within seven days from the date the worker left【labour-2004:67】."
+    )
+    checked = check_answer(reply, [LAW_67])
+    assert checked.valid == ["labour-2004:67"]
+    assert checked.invalid == []
+    assert checked.flagged == ["49"]
+    assert checked.dropped == 0
+    assert "[labour-2004:67]" in checked.text
+
+
+def test_a_cross_reference_that_no_retrieved_text_makes_is_still_removed():
+    reply = "Pay is due under Article 61 within seven days [labour-2004:67]."
+    checked = check_answer(reply, [LAW_67])
+    assert checked.invalid == ["61"]
+    assert checked.dropped == 1
+
+
+@pytest.mark.parametrize("space", ["\u202f", "\u00a0", "\u2009"])
+def test_unusual_spaces_cannot_detach_a_citation(space):
+    """GPT OSS writes these. A detached citation left an empty claim for the judge."""
+    checked = check_answer(f"Pay is due within seven days.{space}[labour-2004:67]", [LAW_67])
+    assert checked.text == "Pay is due within seven days [labour-2004:67]."
+
+
+@pytest.mark.parametrize("hyphen", ["\u2011", "\u2010", "\u2013"])
+def test_unusual_hyphens_cannot_hide_an_invented_id(hyphen):
+    reply = f"Pay continues [labour{hyphen}2004:999]. Notice is seven days [labour-2004:67]."
+    checked = check_answer(reply, [LAW_67])
+    assert "999" not in checked.text
+    assert "labour-2004:999" in checked.invalid
+
+
+def test_one_citation_at_the_end_of_a_line_covers_the_line():
+    checked = check_answer("First claim about pay. Second claim about pay [labour-2004:67].", [LAW_67])
+    assert checked.uncited == 0
+
+
+def test_a_line_with_no_citation_at_all_is_uncited():
+    assert check_answer("Cited here [labour-2004:67].\nThis claim has none at all.", [LAW_67]).uncited == 1
+
+
+# ---------------------------------------------------------------- figures
+
+
+LAW_73 = make_article(
+    "73",
+    "يكون الحد الأقصى ثمان وأربعين ساعة في الأسبوع عدا شهر رمضان، فيكون ست وثلاثين ساعة في الأسبوع بواقع ست ساعات يومياً.",
+    "The maximum shall be forty-eight hours per week, except Ramadan, thirty-six hours per week.",
+)
+
+
+def test_garbled_arabic_number_is_caught():
+    """A real reply: the law says 36, and the model wrote 63."""
+    reply = "ساعات الدوام في شهر رمضان لا تتجاوز ثلاثة وستين ساعة في الأسبوع [labour-2004:73]."
+    checked = check_answer(reply, [LAW_73], "ما هي ساعات الدوام في شهر رمضان؟")
+    assert checked.numbers == [63.0]
+    assert checked.valid == []
+    assert checked.text == ""
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "ساعات العمل في رمضان ست وثلاثون ساعة [labour-2004:73].",
+        "ساعات العمل في رمضان ستة وثلاثين ساعة [labour-2004:73].",
+        "ساعات العمل في رمضان 36 ساعة [labour-2004:73].",
+        "ساعات العمل في رمضان ٣٦ ساعة [labour-2004:73].",
+        "Hours in Ramadan are 36 a week [labour-2004:73].",
+        "Hours in Ramadan are thirty-six a week [labour-2004:73].",
+    ],
+)
+def test_the_right_number_is_accepted_in_any_form(reply):
+    checked = check_answer(reply, [LAW_73])
+    assert checked.numbers == []
+    assert checked.valid == ["labour-2004:73"]
+
+
+def test_a_figure_from_the_question_may_be_quoted_to_correct_it():
+    reply = "No, not 20. The limit is 36 hours [labour-2004:73]."
+    assert check_answer(reply, [LAW_73], "Is the limit 20 hours?").numbers == []
+    assert check_answer(reply, [LAW_73], "What is the limit?").numbers == [20.0]
+
+
+def test_a_wrong_figure_in_one_sentence_leaves_the_others():
+    reply = "Ramadan hours are 36 [labour-2004:73]. The fine is 5000 riyals [labour-2004:73]."
+    checked = check_answer(reply, [LAW_73])
+    assert checked.text == "Ramadan hours are 36 [labour-2004:73]."
+    assert checked.numbers == [5000.0]
+
+
+def test_naming_the_law_is_not_a_wrong_figure():
+    class Law:
+        name_en, name_ar, number, year = "Labour Law", "قانون العمل", 14, 2004
+
+    reply = "Under Law No. 14 of 2004 hours are 36 [labour-2004:73]."
+    assert check_answer(reply, [LAW_73], laws={"labour-2004": Law}).numbers == []
+    assert check_answer(reply, [LAW_73]).numbers == [14.0, 2004.0]

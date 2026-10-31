@@ -192,8 +192,18 @@ def test_claims_are_the_cited_sentences():
     text = "Hours are 36 [labour-2004:73]. No citation here. Pay is due [labour-2004:66][labour-2004:73]."
     assert claims_of(text) == [
         ("Hours are 36.", ["labour-2004:73"]),
+        ("No citation here.", ["labour-2004:66", "labour-2004:73"]),
         ("Pay is due.", ["labour-2004:66", "labour-2004:73"]),
     ]
+
+
+def test_a_paragraph_citation_covers_every_sentence_before_it():
+    text = "First claim here. Second claim here [labour-2004:43]."
+    assert [ids for _, ids in claims_of(text)] == [["labour-2004:43"], ["labour-2004:43"]]
+
+
+def test_sentences_with_no_citation_after_them_are_not_claims():
+    assert claims_of("Cited claim [labour-2004:43].\nA line with none.") == [("Cited claim.", ["labour-2004:43"])]
 
 
 @pytest.mark.parametrize(
@@ -221,7 +231,7 @@ def verdict_reply(*values):
 
 
 def test_judge_scores_claims(engine, tmp_path):
-    answer = ScriptedLLM(default="Hours are 36 [labour-2004:73]. Pay is 5 [labour-2004:73].")
+    answer = ScriptedLLM(default="Hours are 36 [labour-2004:73]. Rest is paid [labour-2004:73].")
     assistant, client = setup(engine, answer, tmp_path)
     record = answer_eval.run_item(item(gold=("labour-2004:73",)), assistant, client)
     answer_eval.judge(record, engine.articles, ScriptedLLM(default=verdict_reply(True, False)))

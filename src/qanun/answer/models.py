@@ -41,6 +41,8 @@ class Answer:
     notes: list[str] = field(default_factory=list)
     translated_question: str | None = None  # the extra search query, if one was used
     removed_citations: list[str] = field(default_factory=list)  # invalid references taken out
+    flagged_references: list[str] = field(default_factory=list)  # kept: the source text mentions them
+    removed_numbers: list[float] = field(default_factory=list)  # figures found in no article
     dropped_sentences: int = 0  # sentences removed because their evidence was invalid
     uncited_sentences: int = 0  # claims left with no citation
 

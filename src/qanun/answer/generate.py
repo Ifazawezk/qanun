@@ -6,6 +6,10 @@ writes is trusted. After generation:
 - every citation, in whatever form the model wrote it, is checked against the
   articles it was given, including references in prose such as "Article 54";
 - a sentence that rests on a citation that cannot be verified is removed;
+- a reference found in the retrieved text itself is kept but flagged, because the
+  law cross-refers to articles that were not retrieved;
+- a sentence with a number found neither in the articles nor the question is
+  removed, since a wrong figure in a legal answer passes every citation check;
 - an answer left without a valid citation is replaced by a refusal;
 - an answer in the wrong language is withheld.
 
@@ -25,6 +29,7 @@ from typing import Sequence
 from qanun.answer.assistant import EXTRACTIVE_LEAD
 from qanun.answer.llm import LLMClient, LLMError
 from qanun.answer.models import Answer, Citation
+from qanun.answer.numbers import numbers_in
 from qanun.corpus.models import Article, Law
 from qanun.text.normalize import DIGITS, detect_language
 
@@ -51,6 +56,14 @@ WRONG_LANGUAGE = {
 REMOVED = {
     "en": "Removed a reference to {items}, which was not among the retrieved articles.",
     "ar": "حُذفت الإشارة إلى {items} لأنها ليست ضمن المواد المسترجعة.",
+}
+FLAGGED = {
+    "en": "This answer mentions {items} because the cited text does. That article was not retrieved, so it is not linked.",
+    "ar": "تشير هذه الإجابة إلى {items} لأن النص المستشهد به يذكرها. لم تُسترجع تلك المادة، لذلك لا يوجد رابط لها.",
+}
+NUMBERS = {
+    "en": "Removed a sentence with a figure that is not in the articles: {items}.",
+    "ar": "حُذفت جملة تتضمن رقماً غير موجود في المواد: {items}.",
 }
 DROPPED = {
     "en": "Removed {count} sentence(s) that relied on an article that could not be verified.",
@@ -104,6 +117,13 @@ SENTENCE_END = re.compile(r"(?<=[.!?؟])(?<!\bNo\.)(?<!\bArt\.)\s+")
 CITES_AFTER_STOP = re.compile(r"[ \t]*([.!?؟])[ \t]*((?:\[[a-z0-9-]+:[a-z0-9-]+\][ \t]*)+)")
 
 
+# Models use these freely, and they would hide an id from every pattern here.
+LOOKALIKES = str.maketrans({
+    "\u00a0": " ", "\u2007": " ", "\u2009": " ", "\u202f": " ", "\u200a": " ",
+    "\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-", "\u2014": "-", "\u2212": "-",
+})
+
+
 def canonical_id(text: str) -> str:
     return re.sub(r"\s+", "", text.translate(DIGITS)).lower()
 
@@ -116,6 +136,7 @@ def normalize_citations(text: str) -> str:
         ids = ID_TEXT.findall(match.group(1))
         return "".join(f"[{canonical_id(i)}]" for i in ids) if ids else match.group(0)
 
+    text = text.translate(LOOKALIKES)
     text = BARE_ID.sub(lambda m: f"[{canonical_id(m.group(0))}]", BRACKETED.sub(bracket, text))
     return CITES_AFTER_STOP.sub(lambda m: f" {m.group(2).strip()}{m.group(1)} ", text).strip()
 
@@ -144,11 +165,37 @@ def known_labels(articles: Sequence[Article]) -> set[str]:
     return labels | {label.removeprefix("issuance-") for label in labels}
 
 
+def source_labels(articles: Sequence[Article]) -> set[str]:
+    """Articles that the retrieved texts themselves refer to."""
+    labels: set[str] = set()
+    for article in articles:
+        for text in (article.text_ar, article.text_en or ""):
+            labels.update(prose_labels(text)[0])
+    return labels
+
+
+def source_numbers(
+    articles: Sequence[Article], question: str, laws: dict[str, Law] | None = None
+) -> set[float]:
+    """Numbers an answer may use. The question's own count, so that an answer can
+    quote a figure in order to correct it, and so do law names such as Law No. 14 of 2004."""
+    laws = laws or {}
+    parts = [question]
+    for article in articles:
+        parts += [article.text_ar, article.text_en or "", article.title_en, status_line(article)]
+        law = laws.get(article.law)
+        if law is not None:
+            parts += [law.name_en, law.name_ar, f"{law.number} {law.year}"]
+    return numbers_in("\n".join(parts))
+
+
 @dataclass
 class CheckedAnswer:
     text: str
     valid: list[str] = field(default_factory=list)
     invalid: list[str] = field(default_factory=list)
+    flagged: list[str] = field(default_factory=list)
+    numbers: list[float] = field(default_factory=list)
     dropped: int = 0
     uncited: int = 0
 
@@ -175,28 +222,41 @@ def check_citations(text: str, allowed: set[str]) -> tuple[str, list[str], list[
     return cleaned.strip(), valid, invalid
 
 
-def check_answer(raw: str, articles: Sequence[Article]) -> CheckedAnswer:
+def check_answer(
+    raw: str, articles: Sequence[Article], question: str = "", laws: dict[str, Law] | None = None
+) -> CheckedAnswer:
     """Validate a reply sentence by sentence, failing closed."""
     allowed = {a.id for a in articles}
     labels = known_labels(articles)
+    quoted = source_labels(articles)
+    figures = source_numbers(articles, question, laws)
     result = CheckedAnswer("")
     lines = []
     for line in normalize_citations(raw).split("\n"):
         kept = []
+        pending_claims = 0  # a citation at the end of a line covers the sentences before it
         for sentence in SENTENCE_END.split(line):
             cleaned, valid, invalid = check_citations(sentence, allowed)
-            mentions, worded = prose_labels(CITATION.sub("", sentence))
+            bare = CITATION.sub("", sentence)
+            mentions, worded = prose_labels(bare)
             unknown = [label for label in mentions if label not in labels]
-            result.invalid += [i for i in [*invalid, *unknown] if i not in result.invalid]
-            if unknown or worded or (invalid and not valid):
+            invented = [label for label in unknown if label not in quoted]
+            wrong = sorted(numbers_in(bare) - figures)
+            result.invalid += [i for i in [*invalid, *invented] if i not in result.invalid]
+            result.numbers += [n for n in wrong if n not in result.numbers]
+            if invented or worded or wrong or (invalid and not valid):
                 # Its evidence is gone, so the claim goes with it.
                 result.dropped += sentence.strip() != ""
                 continue
+            result.flagged += [label for label in unknown if label not in result.flagged]
             result.valid += [i for i in valid if i not in result.valid]
             if cleaned:
                 kept.append(cleaned)
-                is_claim = len(cleaned.split()) > 3 and not cleaned.endswith(":")
-                result.uncited += is_claim and not valid
+                if valid:
+                    pending_claims = 0
+                elif len(cleaned.split()) > 3 and not cleaned.endswith(":"):
+                    pending_claims += 1
+        result.uncited += pending_claims
         if kept:
             lines.append(" ".join(kept))
     result.text = "\n".join(lines).strip()
@@ -306,14 +366,18 @@ class Generator:
         if REFUSAL_TOKEN.search(raw):
             return Answer(question, lang, "generative", REFUSAL[lang], list(citations), refused=True, model=model)
 
-        checked = check_answer(raw, articles)
+        checked = check_answer(raw, articles, question, self.laws)
         notes = []
         if checked.invalid:
             notes.append(REMOVED[lang].format(items=", ".join(checked.invalid)))
+        if checked.numbers:
+            notes.append(NUMBERS[lang].format(items=", ".join(f"{n:g}" for n in checked.numbers)))
         if checked.dropped:
             notes.append(DROPPED[lang].format(count=checked.dropped))
         details = dict(
             removed_citations=checked.invalid,
+            flagged_references=checked.flagged,
+            removed_numbers=checked.numbers,
             dropped_sentences=checked.dropped,
             uncited_sentences=checked.uncited,
         )
@@ -331,6 +395,8 @@ class Generator:
                 notes=[WRONG_LANGUAGE[lang]], **details,
             )
 
+        if checked.flagged:
+            notes.append(FLAGGED[lang].format(items=", ".join(checked.flagged)))
         if checked.uncited:
             notes.append(UNCITED[lang])
         order = {article_id: i for i, article_id in enumerate(checked.valid)}
