@@ -308,7 +308,13 @@ def run(
         results.append(
             run_method("Cross-language + translation", TranslatedRetriever(cross, translations), questions)
         )
-    stages = [("Cross-language + translation", "Cross-language, no translation")]
+        # The desktop build: no embeddings, and a key is optional.
+        keyword_only = CrossLanguageRetriever(bm25)
+        results.append(run_method("BM25 + translation", TranslatedRetriever(keyword_only, translations), questions))
+    stages = [
+        ("Cross-language + translation", "Cross-language, no translation"),
+        ("BM25 + translation", "BM25"),
+    ]
     for name in rerankers:
         from qanun.retrieval.rerank import CrossEncoderScorer, Reranker
 
