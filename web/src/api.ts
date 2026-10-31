@@ -27,6 +27,7 @@ export interface Answer {
   mode: "extractive" | "generative";
   text: string;
   refused: boolean;
+  withheld: boolean;
   model: string | null;
   notes: string[];
   translated_question: string | null;

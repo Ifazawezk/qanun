@@ -39,6 +39,7 @@ class AnswerOut(BaseModel):
     mode: str
     text: str
     refused: bool
+    withheld: bool = False
     model: str | None
     notes: list[str]
     translated_question: str | None = None

@@ -4,6 +4,7 @@ import pytest
 
 from qanun.answer.assistant import Assistant
 from qanun.answer.generate import (
+    FAILED_CHECKS,
     REFUSAL,
     Generator,
     as_data,
@@ -215,7 +216,8 @@ def ask(engine, reply, question="What are the working hours in Ramadan?", k=3) -
 def test_answer_of_only_invented_citations_is_withheld_in_the_right_language(engine):
     answer = ask(engine, "ساعات العمل 36 وفق المادة 999.", "ما ساعات العمل في رمضان؟")
     assert answer.refused
-    assert answer.text == REFUSAL["ar"]
+    assert answer.withheld
+    assert answer.text == FAILED_CHECKS["ar"]
     assert "999" not in answer.text
     assert all(ord(ch) > 127 or not ch.isalpha() for note in answer.notes for ch in note if ch.isalpha())
 
@@ -435,3 +437,20 @@ def test_list_numbers_stay_with_their_text_and_are_not_figures():
     assert checked.numbers == []
     assert checked.dropped == 0
     assert "3. It is due" in checked.text
+
+
+def test_a_failed_check_does_not_claim_the_law_is_silent(engine):
+    """A real case: the Ramadan hours came back as 33, and saying the articles do not
+    answer that would be false, because Article 73 does."""
+    answer = ask(engine, "Hours in Ramadan are 33 a week [labour-2004:73].")
+    assert answer.refused and answer.withheld
+    assert answer.text == FAILED_CHECKS["en"]
+    assert answer.text != REFUSAL["en"]
+    assert "33" not in answer.text
+    assert any("33" in note for note in answer.notes)
+
+
+def test_a_true_refusal_is_not_marked_as_withheld(engine):
+    answer = ask(engine, "NOT_COVERED")
+    assert answer.refused and not answer.withheld
+    assert answer.text == REFUSAL["en"]

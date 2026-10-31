@@ -36,7 +36,8 @@ class Answer:
     mode: str  # "generative" or "extractive"
     text: str  # the answer (generative) or a short lead-in (extractive)
     citations: list[Citation]
-    refused: bool = False
+    refused: bool = False  # no answer is shown
+    withheld: bool = False  # one was written, but it failed the checks
     model: str | None = None
     notes: list[str] = field(default_factory=list)
     translated_question: str | None = None  # the extra search query, if one was used

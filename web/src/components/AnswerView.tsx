@@ -83,8 +83,9 @@ export function AnswerView({ answer, uiLang, onOpen }: Props) {
   const s = t(uiLang);
   const generative = answer.mode === "generative";
   const written = generative && !answer.refused;
-  const badge = !generative ? s.extractiveBadge : answer.refused ? s.refusedBadge : s.generativeBadge;
-  const label = !generative ? s.extractiveLabel : answer.refused ? s.refusedLabel : s.generativeLabel;
+  const refusal = answer.withheld ? "withheld" : "refused";
+  const badge = !generative ? s.extractiveBadge : written ? s.generativeBadge : s[`${refusal}Badge`];
+  const label = !generative ? s.extractiveLabel : written ? s.generativeLabel : s[`${refusal}Label`];
   const cited = answer.citations.filter((c) => c.cited);
   const others = answer.citations.filter((c) => !c.cited);
   return (

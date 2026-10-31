@@ -45,6 +45,14 @@ REFUSAL = {
     "ar": "المواد المسترجعة لا تجيب عن هذا السؤال، لذلك لا يمكنني الإجابة عنه من نصوص القوانين "
     "المتوفرة. أقرب المواد مذكورة أدناه.",
 }
+# Not the same as a refusal. The articles may well cover the question, so saying
+# they do not would mislead someone whose answer was stopped by a check.
+FAILED_CHECKS = {
+    "en": "An answer was written, but it did not pass the checks against the articles, so it is not "
+    "shown. The closest articles are listed below and may answer your question.",
+    "ar": "كُتبت إجابة لكنها لم تجتز التحقق مقابل المواد، لذلك لا تُعرض. أقرب المواد مذكورة أدناه "
+    "وقد تجيب عن سؤالك.",
+}
 LLM_FAILED = {
     "en": "The language model could not be reached, so this is the extractive result.",
     "ar": "تعذر الاتصال بالنموذج اللغوي، لذلك هذه نتيجة البحث في النصوص.",
@@ -401,8 +409,8 @@ class Generator:
         if not checked.valid:
             notes.append(WITHHELD[lang])
             return Answer(
-                question, lang, "generative", REFUSAL[lang], list(citations),
-                refused=True, model=model, notes=notes, **details,
+                question, lang, "generative", FAILED_CHECKS[lang], list(citations),
+                refused=True, withheld=True, model=model, notes=notes, **details,
             )
 
         if detect_language(CITATION.sub("", checked.text)) != lang:

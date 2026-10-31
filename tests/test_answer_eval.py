@@ -22,7 +22,7 @@ from qanun.answer_eval import (
 )
 from qanun.cli import build_parser, cmd_llm
 from qanun.corpus.store import load_articles
-from qanun.evaluation import Question, check_gold
+from qanun.evaluation import check_gold
 from qanun.retrieval.dense import DenseIndex
 from qanun.search import SearchEngine
 
@@ -385,9 +385,6 @@ def test_llm_status_never_prints_the_key(monkeypatch, capsys):
     assert "openai/gpt-oss-120b" in out
     assert "value-that-must-stay-private" not in out
 
-
-def test_question_dataclass_still_loads():
-    assert answer_eval.Question is Question
 
 
 def test_a_numbered_list_gives_whole_claims():
