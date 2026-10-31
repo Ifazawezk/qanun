@@ -22,6 +22,7 @@ import numpy as np
 from qanun.config import ROOT
 from qanun.corpus.models import Article
 from qanun.retrieval.base import Hit, Retriever
+from qanun.retrieval.hybrid import reciprocal_rank_fusion
 
 EVAL_DIR = ROOT / "eval"
 QUESTIONS_PATH = EVAL_DIR / "questions.jsonl"
@@ -125,6 +126,24 @@ class TranslatedRetriever:
 
     def search(self, query: str, k: int = 10, laws: Iterable[str] | None = None) -> list[Hit]:
         return self.cross.search(query, k=k, laws=laws, translation=self.translations.get(query))
+
+
+class PlainFusionRetriever:
+    """RRF over the question and its translation on both retrievers. It is measured
+    to show why it is not used: an article with text in both languages scores in
+    more lists, so the articles that exist only in Arabic stay buried."""
+
+    name = "plain-fusion"
+
+    def __init__(self, retrievers: Sequence[Retriever], translations: dict[str, str], depth: int = 50):
+        self.retrievers = list(retrievers)
+        self.translations = translations
+        self.depth = depth
+
+    def search(self, query: str, k: int = 10, laws: Iterable[str] | None = None) -> list[Hit]:
+        queries = [q for q in (query, self.translations.get(query)) if q]
+        rankings = [r.search(q, k=self.depth, laws=laws) for q in queries for r in self.retrievers]
+        return reciprocal_rank_fusion(rankings)[:k]
 
 
 class RerankedRetriever:
@@ -311,7 +330,10 @@ def run(
         # The desktop build: no embeddings, and a key is optional.
         keyword_only = CrossLanguageRetriever(bm25)
         results.append(run_method("BM25 + translation", TranslatedRetriever(keyword_only, translations), questions))
+        plain = PlainFusionRetriever([bm25, dense], translations)
+        results.append(run_method("Plain RRF over both queries", plain, questions))
     stages = [
+        ("Cross-language + translation", "Plain RRF over both queries"),
         ("Cross-language + translation", "Cross-language, no translation"),
         ("BM25 + translation", "BM25"),
     ]

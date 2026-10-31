@@ -4,6 +4,7 @@ from qanun.config import CORPUS_DIR
 from qanun.corpus.store import load_articles
 from qanun.evaluation import (
     MethodResult,
+    PlainFusionRetriever,
     Question,
     RerankedRetriever,
     TranslatedRetriever,
@@ -194,3 +195,22 @@ def test_report_shows_what_each_stage_adds(sample_articles):
     assert "## What each stage adds" in report
     assert "| new, against old | +1.000" in report
     assert "against missing" not in report
+
+
+def test_plain_fusion_rewards_being_in_more_lists():
+    """The flaw that per-language search avoids: "both" outranks the true top hit."""
+
+    class English:
+        name = "english"
+
+        def search(self, query, k=10, laws=None):
+            return [Hit("both", 1.0, 1)] if query == "q" else []
+
+    class Arabic:
+        name = "arabic"
+
+        def search(self, query, k=10, laws=None):
+            return [Hit("arabic-only", 1.0, 1), Hit("both", 0.9, 2)] if query == "t" else []
+
+    ranked = PlainFusionRetriever([English(), Arabic()], {"q": "t"}).search("q")
+    assert [h.article_id for h in ranked] == ["both", "arabic-only"]
