@@ -11,7 +11,7 @@ Citation precision counts a citation as correct only if it is the labelled gold 
 | ar-allam | allam-2-7b | openai/gpt-oss-20b | 12 | 12 | finished |
 | ar-gpt-oss-120b | openai/gpt-oss-120b | openai/gpt-oss-20b | 12 | 12 | finished |
 | ar-qwen | qwen/qwen3.8-27b | openai/gpt-oss-20b | 12 | 12 | finished |
-| gpt-oss-120b | openai/gpt-oss-120b | openai/gpt-oss-20b | 60 | 60 | finished |
+| gpt-oss-120b | openai/gpt-oss-120b | openai/gpt-oss-20b | 98 | 98 | finished |
 | qwen | qwen/qwen3.8-27b | openai/gpt-oss-20b | 60 | 60 | finished |
 
 ## Measured in code
@@ -21,7 +21,7 @@ Citation precision counts a citation as correct only if it is the labelled gold 
 | ar-allam | 2/5 (40%) | 2/5 | 3/3 (100%) | 1/1 | 0/2 | 0/3 (0%) | 0/3 | 3 | 0 | 0 |
 | ar-gpt-oss-120b | 0/6 (0%) | 0/6 | 3/3 (100%) | 1/1 | 0/2 | 7/8 (88%) | 6/6 | 0 | 0 | 0 |
 | ar-qwen | 0/6 (0%) | 0/6 | 3/3 (100%) | 1/1 | 0/2 | 7/8 (88%) | 6/6 | 0 | 0 | 0 |
-| gpt-oss-120b | 5/30 (17%) | 3/27 | 15/15 (100%) | 7/7 | 0/8 | 25/30 (83%) | 24/25 | 1 | 1 | 0 |
+| gpt-oss-120b | 9/60 (15%) | 4/54 | 23/23 (100%) | 7/7 | 0/8 | 51/61 (84%) | 50/51 | 1 | 2 | 0 |
 | qwen | 4/30 (13%) | 2/27 | 15/15 (100%) | 7/7 | 0/8 | 26/34 (76%) | 25/26 | 2 | 1 | 0 |
 
 ## Measured by an LLM judge
@@ -33,7 +33,7 @@ Citation precision counts a citation as correct only if it is the labelled gold 
 | ar-allam | openai/gpt-oss-20b | 3 | 8 | 1 | 12% | 0 |
 | ar-gpt-oss-120b | openai/gpt-oss-20b | 7 | 9 | 9 | 100% | 0 |
 | ar-qwen | openai/gpt-oss-20b | 8 | 11 | 10 | 91% | 0 |
-| gpt-oss-120b | openai/gpt-oss-20b | 33 | 50 | 47 | 94% | 0 |
+| gpt-oss-120b | openai/gpt-oss-20b | 58 | 84 | 79 | 94% | 0 |
 | qwen | openai/gpt-oss-20b | 36 | 85 | 85 | 100% | 0 |
 
 ### Claims the judge rejected: ar-allam
@@ -58,6 +58,8 @@ Citation precision counts a citation as correct only if it is the labelled gold 
 
 | Question | Claim | Reason |
 | --- | --- | --- |
-| ar-21 | يتحمل صاحب العمل تكلفة تذكرة عودة العامل إلى بلده عند انتهاء خدمته على نفقته. | Article states employer bears costs for transporting a deceased worker’s body, not for a living worker’s return ticket. |
+| en-05 | Yes. | The claim is a single word 'Yes.' and does not correspond to any statement in the article. |
 | en-23 | The employer is required to transfer the wage to the worker’s account in a financial institution in the State; payment in cash is not permitted. | Article requires transfer to a financial institution but does not explicitly forbid cash payments. |
+| ar-21 | يتحمل صاحب العمل تكلفة تذكرة عودة العامل إلى بلده عند انتهاء خدمته على نفقته. | Article states employer bears costs for transporting a deceased worker’s body, not for a living worker’s return ticket. |
 | fal-04 | The statement is not correct. | The claim is ambiguous and does not correspond to any specific statement in the cited article. |
+| en-34 | Yes. | The claim "Yes." does not correspond to any statement in the article. |

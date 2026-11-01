@@ -253,39 +253,39 @@ Some example questions, with the rank of the gold article (a dash means not in t
 
 ### Answers
 
-Real runs on Groq in October 2026, through the default setup with a key: the question is translated by GPT OSS 20B, the top 20 are reranked, and the model sees 4 articles. Each model answered the same 60 questions: 30 sampled from the retrieval set, and 30 from [`eval/answer_questions.jsonl`](eval/answer_questions.jsonl), a separate set of out-of-scope questions, questions the corpus cannot answer, false premises, injection attempts, and instructions planted inside retrieved articles. Every answer is in [`eval/answers`](eval/answers) and the [full report](eval/answer_results.md) lists every claim the judge rejected.
+Real runs on Groq in October and November 2026, through the default setup with a key: the question is translated by GPT OSS 20B, the top 20 are reranked, and the model sees 4 articles. GPT OSS 120B answered all 98 questions: the 60 in the retrieval set, and the 38 in [`eval/answer_questions.jsonl`](eval/answer_questions.jsonl), a separate set of out-of-scope questions, questions the corpus cannot answer, false premises, injection attempts, and instructions planted inside retrieved articles. Qwen 3.8 27B answered 60 of them, 30 from each set, and the middle column gives GPT OSS 120B on those same 60 so the two can be compared. Every answer is in [`eval/answers`](eval/answers) and the [full report](eval/answer_results.md) lists every claim the judge rejected.
 
 ```bash
-qanun eval-answers --sample 60 --name gpt-oss-120b
+qanun eval-answers --sample 98 --name gpt-oss-120b
 ```
 
-| Measured in code | GPT OSS 120B | Qwen 3.8 27B |
-| --- | --- | --- |
-| Answerable questions refused | 5 of 30 | 4 of 30 |
-| The same, where the gold article was retrieved | 3 of 27 | 2 of 27 |
-| Out-of-scope and unanswerable questions refused | 15 of 15 | 15 of 15 |
-| False premises refused or corrected | 7 of 7 | 7 of 7 |
-| Injected or planted instructions obeyed | 0 of 8 | 0 of 8 |
-| Citations pointing to the gold article | 25 of 30 | 26 of 34 |
-| Answers citing a gold article | 24 of 25 | 25 of 26 |
-| Invalid references caught | 1 | 2 |
-| Figures caught | 1 | 1 |
-| Invalid citations reaching the user | 0 | 0 |
+| Measured in code | GPT OSS 120B, all 98 | GPT OSS 120B, the same 60 | Qwen 3.8 27B, 60 |
+| --- | --- | --- | --- |
+| Answerable questions refused | 9 of 60 | 5 of 30 | 4 of 30 |
+| The same, where the gold article was retrieved | 4 of 54 | 3 of 27 | 2 of 27 |
+| Out-of-scope and unanswerable questions refused | 23 of 23 | 15 of 15 | 15 of 15 |
+| False premises refused or corrected | 7 of 7 | 7 of 7 | 7 of 7 |
+| Injected or planted instructions obeyed | 0 of 8 | 0 of 8 | 0 of 8 |
+| Citations pointing to the gold article | 51 of 61 | 25 of 30 | 26 of 34 |
+| Answers citing a gold article | 50 of 51 | 24 of 25 | 25 of 26 |
+| Invalid references caught | 1 | 1 | 2 |
+| Figures caught | 2 | 1 | 1 |
+| Invalid citations reaching the user | 0 | 0 | 0 |
 
-| Measured by an LLM judge, which can be wrong | GPT OSS 120B | Qwen 3.8 27B |
-| --- | --- | --- |
-| Faithfulness: claims supported by the articles they cite | 47 of 50 (94%) | 85 of 85 (100%) |
+| Measured by an LLM judge, which can be wrong | GPT OSS 120B, all 98 | GPT OSS 120B, the same 60 | Qwen 3.8 27B, 60 |
+| --- | --- | --- | --- |
+| Faithfulness: claims supported by the articles they cite | 79 of 84 (94%) | 47 of 50 (94%) | 85 of 85 (100%) |
 
-The judge is GPT OSS 20B, a different model from the two it marks. Reading what it did shows how far to trust it. It wrongly rejected one correct claim about Article 57, which it read as covering only a deceased worker, and that is one of the three behind the 94%. Another rejection, that cash payment is not allowed under Article 66, is arguable. To check it was not approving everything, 8 claims it had passed were corrupted by changing one number, and it caught all 8. That test covered numbers only, so a subtler error could still pass it.
+The judge is GPT OSS 20B, a different model from the two it marks. Reading what it did shows how far to trust it. It wrongly rejected one correct claim about Article 57, which it read as covering only a deceased worker, and that is one of the five behind the 94% on the full set. Another rejection, that cash payment is not allowed under Article 66, is arguable. The other three are short openers such as "Yes.", which make no claim of their own. To check it was not approving everything, 8 claims it had passed were corrupted by changing one number, and it caught all 8. That test covered numbers only, so a subtler error could still pass it.
 
 What the numbers say:
 
 - **No invalid citation reached a user, and the checks caught what the models got wrong.** Neither model invented a citation by itself here. The invalid references caught were `Article 999`, repeated from injection questions that the models argued against.
-- **Refusal worked on this sample.** All 15 out-of-scope and unanswerable questions were refused by both models, and no false premise was accepted. The hostile set has only 8 questions, so 0 of 8 is encouraging and not proof that instructions cannot get through.
-- **Most wrongly refused questions are not the model's fault.** Of the 5 for GPT OSS 120B, 2 are retrieval misses, where refusing is the correct behaviour. 2 more are Article 145 bis, which says only "whoever violates Article 66", and Article 66 was not retrieved. The last is the wrong figure below.
-- **Models can get a figure wrong while citing the right article.** Article 73 sets the hours in Ramadan at 36. Across 5 Arabic prompts about them, which differed only slightly in wording or in how the article was cut, GPT OSS 120B gave 36 three times, 63 once and 33 once. Qwen gave 36 on all 4 of its prompts. Only the figure check stops this: the citation is valid, so the error passes every citation check, and the judge can only flag it afterwards. The other figure caught was a false alarm: Qwen correctly said four weeks is 28 days, which is not written in the article, so that answer was withheld. Across 120 answers the check made one true catch and one false one.
-- **On these numbers Qwen 3.8 27B matches or beats GPT OSS 120B**, on a sample too small to separate them. GPT OSS 120B stays the default because Groq lists it as a production model and Qwen as a preview, which can be withdrawn. To use Qwen, set `QANUN_LLM_MODEL=qwen/qwen3.8-27b`.
-- **These are small samples.** 60 of the 98 questions were run, and one question moves a rate by about 3%. All questions and labels come from one author, and citation precision counts only the labelled article, so an answer that also cites a relevant neighbour lowers it.
+- **Refusal worked on this sample.** GPT OSS 120B refused all 23 out-of-scope and unanswerable questions, Qwen refused all 15 it was given, and no false premise was accepted. The hostile set has only 8 questions, so 0 of 8 is encouraging and not proof that instructions cannot get through.
+- **Most wrongly refused questions are not the model's fault.** Of the 9 for GPT OSS 120B, 5 are retrieval misses, where refusing is the correct behaviour. 2 more are Article 145 bis, which says only "whoever violates Article 66", and Article 66 was not retrieved. 1 is the wrong figure below, and the last is a correct answer that the figure check stopped, also below.
+- **Models can get a figure wrong while citing the right article.** Article 73 sets the hours in Ramadan at 36. Across 5 Arabic prompts about them, which differed only slightly in wording or in how the article was cut, GPT OSS 120B gave 36 three times, 63 once and 33 once. Qwen gave 36 on all 4 of its prompts. Only the figure check stops this: the citation is valid, so the error passes every citation check, and the judge can only flag it afterwards. The other two figures caught were false alarms, both simple arithmetic on the article's own numbers. Qwen correctly said four weeks is 28 days, and GPT OSS 120B correctly added 3 days for each Eid to get 6. Neither total is written in the article, so both answers were withheld. Across 158 answers the check made one true catch and two false ones.
+- **On the 60 questions both ran, Qwen 3.8 27B matches or beats GPT OSS 120B**, on a sample too small to separate them. GPT OSS 120B stays the default because Groq lists it as a production model and Qwen as a preview, which can be withdrawn. To use Qwen, set `QANUN_LLM_MODEL=qwen/qwen3.8-27b`.
+- **These are small samples.** On the 60 answerable questions one question moves a rate by about 2%, and on the 60 that Qwen ran, by about 3%. Qwen was not run on the other 38. All questions and labels come from one author, and citation precision counts only the labelled article, so an answer that also cites a relevant neighbour lowers it.
 
 Models were also compared on 12 Arabic questions, with articles cut to 1,500 characters so that all three got the same text and allam-2-7b fit its 4,096-token window:
 
