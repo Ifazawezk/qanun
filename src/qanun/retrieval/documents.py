@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from qanun.corpus.models import Article, Law
+from qanun.text.normalize import canonical
 
 
 def headings(article: Article, lang: str) -> str:
@@ -64,7 +65,8 @@ def article_passages(
     """Passages for the embedding index, one set per available language.
 
     Each passage starts with the article title and headings so a chunk cut
-    from the middle of a long article still says what it is about.
+    from the middle of a long article still says what it is about. The text is
+    put in canonical form, since the embedding models do not fold letter variants.
     """
     passages = []
     for lang, text in (("ar", article.text_ar), ("en", article.text_en)):
@@ -74,5 +76,5 @@ def article_passages(
         if law is not None:
             prefix = f"{law.name_ar if lang == 'ar' else law.name_en} - {prefix}"
         for chunk in split_paragraphs(text, max_chars):
-            passages.append(Passage(article.id, lang, f"{prefix}\n{chunk}"))
+            passages.append(Passage(article.id, lang, canonical(f"{prefix}\n{chunk}")))
     return passages

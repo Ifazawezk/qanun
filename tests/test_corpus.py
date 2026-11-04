@@ -48,3 +48,25 @@ def test_laws_file_matches_articles(articles):
     for key, law in laws.items():
         in_force = sum(1 for a in articles if a.law == key and a.in_force)
         assert law.article_count == in_force
+
+
+def test_odd_unicode_in_the_source_is_kept_but_normalised_for_search(articles):
+    """Article 116 types a shadda before a kasra (not NFC), and Article 1 of the
+    minimum wage law has a Persian yeh in مستوى. Both stay as published."""
+    import unicodedata
+
+    from qanun.retrieval.documents import article_passages
+    from qanun.text.tokenize import analyze
+
+    by_id = {a.id: a for a in articles}
+    reordered, persian = by_id["labour-2004:116"], by_id["min-wage-2020:1"]
+    assert not unicodedata.is_normalized("NFC", reordered.text_ar)
+    assert "\N{ARABIC LETTER FARSI YEH}" in persian.text_ar
+
+    for article in (reordered, persian):
+        clean = unicodedata.normalize("NFC", article.text_ar).replace("\N{ARABIC LETTER FARSI YEH}", "\N{ARABIC LETTER YEH}")
+        assert analyze(article.text_ar) == analyze(clean), article.id
+        for passage in article_passages(article):
+            assert unicodedata.is_normalized("NFC", passage.text), article.id
+            assert "\N{ARABIC LETTER FARSI YEH}" not in passage.text, article.id
+    assert set(analyze("مستوى")) <= set(analyze(persian.text_ar))

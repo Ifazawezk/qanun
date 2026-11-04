@@ -17,7 +17,7 @@ import numpy as np
 from qanun.corpus.models import Article, Law
 from qanun.retrieval.base import Hit
 from qanun.retrieval.documents import article_passages
-from qanun.text.normalize import detect_language
+from qanun.text.normalize import canonical, detect_language
 
 log = logging.getLogger("qanun.rerank")
 
@@ -78,7 +78,7 @@ class Reranker:
         for position, hit in enumerate(head):
             for passage in self.passages.get(hit.article_id, ()):
                 text = translation if translation and passage.lang != lang else query
-                pairs.append((text, passage.text))
+                pairs.append((canonical(text), passage.text))
                 owners.append(position)
         if not pairs:
             return list(hits[:k])

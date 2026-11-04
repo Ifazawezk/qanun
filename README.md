@@ -135,7 +135,7 @@ flowchart TD
 
 Each article is one record with its law, chapter, Arabic text, English text where available, amendment history, previous versions and source URL. Articles inserted later, like 52 bis or 115 bis 1, get their own labels. Where Al Meezan lists an old and a new version of an article, the current one is indexed and the old one goes into its history. Repealed articles stay out of the index.
 
-Arabic text loses its diacritics and tatweel, and alef forms (أ إ آ), teh marbuta (ة), alef maqsura (ى) and hamza carriers are folded, so `الأجازة` matches `إجازة`. Arabic gets light stemming in the style of light10 and English gets Snowball.
+Arabic text loses its diacritics and tatweel, and alef forms (أ إ آ), teh marbuta (ة), alef maqsura (ى) and hamza carriers are folded, so `الأجازة` matches `إجازة`. Search also reads text in NFC order and treats the Persian ی and ک as ي and ك, since one article puts a shadda before a kasra and another has a Persian yeh. The stored text keeps both as published. Arabic gets light stemming in the style of light10 and English gets Snowball.
 
 BM25 indexes both languages of an article together with its headings. For embeddings, each language is chunked and embedded separately, and an article scores as its best passage. The index is a plain numpy matrix: an exact dot product over 449 passages is fast and needs no approximate search or extra dependency, though a much larger corpus would want one. Rankings are fused with RRF at k = 60, the value from the original paper, not tuned on the evaluation set.
 
