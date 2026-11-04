@@ -151,9 +151,9 @@ Nothing the model writes is trusted. Each reply is normalized first, because mod
 | "Article 999" or "المادة ٩٩٩" in prose, found nowhere in the retrieved text | The sentence is removed |
 | "Article 49" in prose, not retrieved, but the cited article itself refers to it | Kept and flagged in a note, without a link |
 | An article number written as a word, which cannot be matched | The sentence is removed |
-| A figure in neither the articles nor the question | The sentence is removed |
+| A figure in neither the articles nor the question, and not simple arithmetic on the cited article | The sentence is removed |
 
-An answer left with no valid citation becomes a refusal, and one in the wrong language falls back to the extractive result. The figure check compares by value, so `36`, `٣٦`, `thirty-six` and `ست وثلاثين` all match, and `ثلاثة وستين` (63) does not. One and two are skipped, because Arabic expresses them with a dual form. The check cannot catch a real figure from the wrong article, or a wrong statement with no number in it.
+An answer left with no valid citation becomes a refusal, and one in the wrong language falls back to the extractive result. The figure check compares by value, so `36`, `٣٦`, `thirty-six` and `ست وثلاثين` all match, and `ثلاثة وستين` (63) does not. One and two are skipped, because Arabic expresses them with a dual form. Simple arithmetic on the cited article passes too. Two figures with the same unit can be added, so 3 days for each Eid can become 6. Weeks can be given as days, months as days only where the article says how long a month is, and hours a day can be multiplied by a number of days. Sums stop at two figures, because Article 90 has 36, 24 and 3 hours, which add up to the 63 of a real wrong answer. The check cannot catch a real figure from the wrong article, or a wrong statement with no number in it.
 
 ## Evaluation
 

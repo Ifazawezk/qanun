@@ -9,7 +9,8 @@ writes is trusted. After generation:
 - a reference found in the retrieved text itself is kept but flagged, because the
   law cross-refers to articles that were not retrieved;
 - a sentence with a number found neither in the articles nor the question is
-  removed, since a wrong figure in a legal answer passes every citation check;
+  removed, since a wrong figure in a legal answer passes every citation check,
+  unless simple arithmetic on its cited article gives it (3 days for each Eid is 6);
 - an answer left without a valid citation is replaced by a refusal;
 - an answer in the wrong language is withheld.
 
@@ -29,7 +30,7 @@ from typing import Sequence
 from qanun.answer.assistant import EXTRACTIVE_LEAD
 from qanun.answer.llm import LLMClient, LLMError
 from qanun.answer.models import Answer, Citation
-from qanun.answer.numbers import numbers_in
+from qanun.answer.numbers import derived_numbers, numbers_in
 from qanun.corpus.models import Article, Law
 from qanun.text.normalize import DIGITS, detect_language
 
@@ -214,6 +215,11 @@ def source_numbers(
     return numbers_in("\n".join(parts))
 
 
+def article_sums(article: Article) -> set[float]:
+    """Figures an answer can reach by simple arithmetic on one article."""
+    return derived_numbers(article.text_ar) | derived_numbers(article.text_en or "")
+
+
 @dataclass
 class CheckedAnswer:
     text: str
@@ -255,6 +261,7 @@ def check_answer(
     labels = known_labels(articles)
     quoted = source_labels(articles)
     figures = source_numbers(articles, question, laws)
+    sums = {a.id: article_sums(a) for a in articles}
     result = CheckedAnswer("")
     lines = []
     for line in normalize_citations(raw).split("\n"):
@@ -266,7 +273,10 @@ def check_answer(
             mentions, worded = prose_labels(bare)
             unknown = [label for label in mentions if label not in labels]
             invented = [label for label in unknown if label not in quoted]
-            wrong = sorted(numbers_in(bare) - figures)
+            # Arithmetic counts only on the articles the sentence cites, or on all of
+            # them when it cites none, since one citation can close a whole line.
+            reached = set().union(*(sums[i] for i in (valid or sums)))
+            wrong = sorted(numbers_in(bare) - figures - reached)
             result.invalid += [i for i in [*invalid, *invented] if i not in result.invalid]
             result.numbers += [n for n in wrong if n not in result.numbers]
             if invented or worded or wrong or (invalid and not valid):
