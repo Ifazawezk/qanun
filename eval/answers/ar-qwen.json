@@ -13,7 +13,9 @@
   "stopped_by": null,
   "requests_this_run": 20,
   "tokens_this_run": 28634,
-  "cache_hits_this_run": 12
+  "cache_hits_this_run": 12,
+  "rescored": "2026-11-04",
+  "not_judged": []
  },
  "summary": {
   "questions": 12,
