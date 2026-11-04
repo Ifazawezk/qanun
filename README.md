@@ -300,7 +300,7 @@ The 2020 job-change reforms are covered through the amended Labour Law and Artic
 The corpus is a snapshot from October 2026; `qanun fetch --refresh` and `qanun parse` update it. Known gaps:
 
 - The portal returned 44 of the 50 articles of Law 21 of 2015. Article 1 and Articles 46 to 50 are missing.
-- 17 Labour Law articles have no English text, including Articles 49, 51 and 66 as rewritten or amended since 2009. None of the minimum wage texts have English on the portal. qanun shows the official Arabic for these rather than inventing a translation.
+- 30 articles in force have no English text: 17 from the Labour Law, including Articles 49, 51 and 66 as rewritten or amended since 2009, and all 13 minimum wage articles. This is the source, not the download. Asked for English, Al Meezan returns these articles in Arabic. The 2009 English export covers only the Labour Law, and those 17 articles were added or amended after it. qanun shows the official Arabic for these rather than inventing a translation, and an English answer that uses one says so in a note.
 - The older translation differs from the Arabic in places. Three differences found during review are flagged on the articles themselves (Articles 61, 74 and 78). For example, it gives the night-work window as 9 pm to 6 am where the Arabic says 9 pm to 3 am. Not every article was compared by hand, so there may be more.
 - Article 52 bis has a stray `?` inside a word in the source text, kept as published.
 

@@ -26,6 +26,10 @@ EXTRACTIVE_LEAD = {
     "ar": "هذه هي المواد الأقرب إلى سؤالك، مع تمييز الجزء الأكثر صلة في كل مادة. "
     "يرجى قراءة نص المادة كاملاً قبل الاعتماد عليه.",
 }
+# 30 articles, including the 2020 rewrites of the Labour Law and both minimum wage
+# texts, have no English on Al Meezan. Say so rather than leave an English reader
+# wondering why the passage is in Arabic.
+NO_ENGLISH = "Al Meezan has no English text for {items}, so the official Arabic is shown."
 NO_RESULTS = {
     "en": "No article in the corpus matched this question.",
     "ar": "لم يتم العثور على مادة تطابق هذا السؤال.",
@@ -75,6 +79,7 @@ class Assistant:
             rank=rank,
             score=score,
             passage=passage,
+            has_english=bool(article.text_en),
         )
 
     # ------------------------------------------------------------ main entry
@@ -118,4 +123,7 @@ class Assistant:
         else:
             answer = self.generator.answer(question, lang, articles, citations)
         answer.translated_question = translation
+        arabic_only = [f"{c.title} of the {c.law_name}" for c in citations if not c.has_english]
+        if lang == "en" and arabic_only:
+            answer.notes.append(NO_ENGLISH.format(items="; ".join(arabic_only)))
         return answer

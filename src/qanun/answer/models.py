@@ -27,6 +27,7 @@ class Citation:
     score: float
     passage: Passage | None = None
     cited: bool = False  # True when a generated answer cites this article
+    has_english: bool = True  # False when Al Meezan publishes the article only in Arabic
 
 
 @dataclass
