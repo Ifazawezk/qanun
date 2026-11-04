@@ -401,6 +401,83 @@ def test_the_right_number_is_accepted_in_any_form(reply):
     assert checked.valid == ["labour-2004:73"]
 
 
+LAW_78 = make_article(
+    "78",
+    "يستحق العامل سنوياً إجازة بأجر كامل على النحو التالي:\n1- ثلاثة أيام عمل بمناسبة عيد الفطر.\n"
+    "2- ثلاثة أيام عمل بمناسبة عيد الأضحى.\n3- يوم عمل واحد بمناسبة يوم الاستقلال.",
+    "The Worker shall be entitled annually to leave with full Remuneration as follows:\n"
+    "1. Three working days for Eid EI-Fitr.\n2. Three working days for Eid Al-Adha.\n"
+    "3. One working day for the Independence Day.",
+)
+LAW_79 = make_article(
+    "79",
+    "ويجب ألا تقل هذه الإجازة عن ثلاثة أسابيع للعامل الذي تقل خدمته عن خمس سنوات، وأربعة أسابيع "
+    "للعامل الذي تكون مدة خدمته خمس سنوات فأكثر.",
+    "This leave shall not be less than three weeks for the employment of less than five years, and four "
+    "weeks for the employment of five years or more.",
+)
+LAW_90 = make_article(
+    "90",
+    "لا يجوز أن تزيد ساعات العمل العادية للحدث على ست وثلاثين ساعة في الأسبوع بواقع ست ساعات يومياً "
+    "عدا شهر رمضان فلا تزيد ساعات العمل على أربع وعشرين ساعة في الأسبوع بواقع أربع ساعات يومياً.\n"
+    "وبحيث لا يعمل الحدث بصورة مستمرة أكثر من ثلاث ساعات متتالية.",
+)
+
+
+def test_a_sum_of_figures_in_the_cited_article_is_accepted():
+    """A real reply that was withheld: 3 days for each Eid makes 6."""
+    reply = (
+        "Workers are entitled to three paid days off for Eid al‑Fitr and three paid days off for Eid al‑Adha "
+        "each year, giving a total of six paid days for the two Eid holidays【labour-2004:78】."
+    )
+    checked = check_answer(reply, [LAW_78], "How many paid days off do workers get for Eid?")
+    assert checked.numbers == []
+    assert checked.valid == ["labour-2004:78"]
+
+
+def test_weeks_may_be_given_as_days():
+    """A real reply that was withheld: four weeks is 28 days."""
+    reply = (
+        "No, that is incorrect. Annual leave is four weeks (28 days) for a worker whose service is five "
+        "years or more, not 60 days [labour-2004:79]."
+    )
+    question = "Annual leave is 60 days once you pass five years of service, correct?"
+    assert check_answer(reply, [LAW_79], question).numbers == []
+    assert check_answer("Leave is 35 days [labour-2004:79].", [LAW_79]).numbers == [35.0]
+
+
+def test_months_count_as_days_only_where_the_article_says_so():
+    says_so = make_article("80", "تكون الإجازة شهرين، ويحسب الشهر ثلاثين يوماً.")
+    silent = make_article("80", "تكون الإجازة شهرين.")
+    reply = "The leave is 60 days [labour-2004:80]."
+    assert check_answer(reply, [says_so]).numbers == []
+    assert check_answer(reply, [silent]).numbers == [60.0]
+
+
+def test_hours_a_day_times_days():
+    article = make_article("81", "يعمل العامل ثماني ساعات يومياً لمدة ستة أيام.")
+    assert check_answer("That is 48 hours [labour-2004:81].", [article]).numbers == []
+    assert check_answer("That is 56 hours [labour-2004:81].", [article]).numbers == [56.0]
+
+
+def test_the_ramadan_63_is_still_caught_with_both_articles_cited():
+    """The real reply cited Articles 73 and 90. Article 90's 36, 24 and 3 hours add up
+    to 63, which is why sums stop at two figures."""
+    reply = (
+        "ساعات الدوام في شهر رمضان لا تتجاوز ثلاثة وستين ساعة في الأسبوع بواقع ست ساعات "
+        "يوميًا [labour-2004:73][labour-2004:90]"
+    )
+    checked = check_answer(reply, [LAW_90, LAW_73, LAW_78], "ما هي ساعات الدوام في شهر رمضان؟")
+    assert checked.numbers == [63.0]
+    assert checked.valid == []
+
+
+def test_arithmetic_counts_only_on_the_cited_article():
+    reply = "Annual leave is 28 days [labour-2004:78]."
+    assert check_answer(reply, [LAW_78, LAW_79]).numbers == [28.0]
+    assert check_answer(reply.replace("78", "79"), [LAW_78, LAW_79]).numbers == []
+
+
 def test_a_figure_from_the_question_may_be_quoted_to_correct_it():
     reply = "No, not 20. The limit is 36 hours [labour-2004:73]."
     assert check_answer(reply, [LAW_73], "Is the limit 20 hours?").numbers == []

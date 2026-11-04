@@ -135,7 +135,7 @@ flowchart TD
 
 Each article is one record with its law, chapter, Arabic text, English text where available, amendment history, previous versions and source URL. Articles inserted later, like 52 bis or 115 bis 1, get their own labels. Where Al Meezan lists an old and a new version of an article, the current one is indexed and the old one goes into its history. Repealed articles stay out of the index.
 
-Arabic text loses its diacritics and tatweel, and alef forms (أ إ آ), teh marbuta (ة), alef maqsura (ى) and hamza carriers are folded, so `الأجازة` matches `إجازة`. Arabic gets light stemming in the style of light10 and English gets Snowball.
+Arabic text loses its diacritics and tatweel, and alef forms (أ إ آ), teh marbuta (ة), alef maqsura (ى) and hamza carriers are folded, so `الأجازة` matches `إجازة`. Search also reads text in NFC order and treats the Persian ی and ک as ي and ك, since one article puts a shadda before a kasra and another has a Persian yeh. The stored text keeps both as published. Arabic gets light stemming in the style of light10 and English gets Snowball.
 
 BM25 indexes both languages of an article together with its headings. For embeddings, each language is chunked and embedded separately, and an article scores as its best passage. The index is a plain numpy matrix: an exact dot product over 449 passages is fast and needs no approximate search or extra dependency, though a much larger corpus would want one. Rankings are fused with RRF at k = 60, the value from the original paper, not tuned on the evaluation set.
 
@@ -151,9 +151,9 @@ Nothing the model writes is trusted. Each reply is normalized first, because mod
 | "Article 999" or "المادة ٩٩٩" in prose, found nowhere in the retrieved text | The sentence is removed |
 | "Article 49" in prose, not retrieved, but the cited article itself refers to it | Kept and flagged in a note, without a link |
 | An article number written as a word, which cannot be matched | The sentence is removed |
-| A figure in neither the articles nor the question | The sentence is removed |
+| A figure in neither the articles nor the question, and not simple arithmetic on the cited article | The sentence is removed |
 
-An answer left with no valid citation becomes a refusal, and one in the wrong language falls back to the extractive result. The figure check compares by value, so `36`, `٣٦`, `thirty-six` and `ست وثلاثين` all match, and `ثلاثة وستين` (63) does not. One and two are skipped, because Arabic expresses them with a dual form. The check cannot catch a real figure from the wrong article, or a wrong statement with no number in it.
+An answer left with no valid citation becomes a refusal, and one in the wrong language falls back to the extractive result. The figure check compares by value, so `36`, `٣٦`, `thirty-six` and `ست وثلاثين` all match, and `ثلاثة وستين` (63) does not. One and two are skipped, because Arabic expresses them with a dual form. Simple arithmetic on the cited article passes too. Two figures with the same unit can be added, so 3 days for each Eid can become 6. Weeks can be given as days, months as days only where the article says how long a month is, and hours a day can be multiplied by a number of days. Sums stop at two figures, because Article 90 has 36, 24 and 3 hours, which add up to the 63 of a real wrong answer. The check cannot catch a real figure from the wrong article, or a wrong statement with no number in it.
 
 ## Evaluation
 
@@ -206,19 +206,20 @@ These are real runs on Groq in October and November 2026, with the default setup
 
 ```bash
 qanun eval-answers --sample 98 --name gpt-oss-120b
+qanun eval-answers --rescore      # recheck the saved runs from the local cache, no requests
 ```
 
 | Measured in code | GPT OSS 120B, all 98 | GPT OSS 120B, the same 60 | Qwen 3.8 27B, 60 |
 | --- | --- | --- | --- |
-| Answerable questions refused | 9 of 60 | 5 of 30 | 4 of 30 |
-| The same, where the gold article was retrieved | 4 of 54 | 3 of 27 | 2 of 27 |
+| Answerable questions refused | 8 of 60 | 5 of 30 | 4 of 30 |
+| The same, where the gold article was retrieved | 3 of 54 | 3 of 27 | 2 of 27 |
 | Out-of-scope and unanswerable questions refused | 23 of 23 | 15 of 15 | 15 of 15 |
 | False premises refused or corrected | 7 of 7 | 7 of 7 | 7 of 7 |
 | Injected or planted instructions obeyed | 0 of 8 | 0 of 8 | 0 of 8 |
-| Citations pointing to the gold article | 51 of 61 | 25 of 30 | 26 of 34 |
-| Answers citing a gold article | 50 of 51 | 24 of 25 | 25 of 26 |
+| Citations pointing to the gold article | 52 of 62 | 25 of 30 | 26 of 34 |
+| Answers citing a gold article | 51 of 52 | 24 of 25 | 25 of 26 |
 | Invalid references caught | 1 | 1 | 2 |
-| Figures caught | 2 | 1 | 1 |
+| Figures caught | 1 | 1 | 0 |
 | Invalid citations reaching the user | 0 | 0 | 0 |
 
 | Measured by an LLM judge, which can be wrong | GPT OSS 120B, all 98 | GPT OSS 120B, the same 60 | Qwen 3.8 27B, 60 |
@@ -229,9 +230,9 @@ The judge is GPT OSS 20B, a different model from the two it marks. Of the five c
 
 No invalid citation reached a user. Neither model invented a citation on its own here; the invalid references caught were `Article 999`, repeated from injection questions that the models argued against. Refusal held on this sample, though the hostile set has only 8 questions, so 0 of 8 is encouraging and not proof that instructions cannot get through.
 
-Of the 9 answerable questions GPT OSS 120B refused, 5 are retrieval misses, where refusing is right. 2 are Article 145 bis, which says only "whoever violates Article 66", and Article 66 was not retrieved. 1 is a wrong figure and 1 is a correct answer the figure check stopped.
+Of the 8 answerable questions GPT OSS 120B refused, 5 are retrieval misses, where refusing is right. 2 are Article 145 bis, which says only "whoever violates Article 66", and Article 66 was not retrieved. 1 is a wrong figure.
 
-The figure check matters because a model can get a figure wrong while citing the right article. Article 73 sets the hours in Ramadan at 36. Across 5 Arabic prompts that differed only slightly in wording or in how the article was cut, GPT OSS 120B gave 36 three times, 63 once and 33 once, while Qwen gave 36 on all 4 of its prompts. The citation is valid, so only the figure check stops this; the judge can only flag it afterwards. The other two catches were false alarms on simple arithmetic: Qwen correctly said four weeks is 28 days, and GPT OSS 120B correctly added 3 days for each Eid to get 6. Neither total is written in the article, so both answers were withheld. Across 158 answers the check made one true catch and two false ones.
+The figure check matters because a model can get a figure wrong while citing the right article. Article 73 sets the hours in Ramadan at 36. Across 5 Arabic prompts that differed only slightly in wording or in how the article was cut, GPT OSS 120B gave 36 three times, 63 once and 33 once, while Qwen gave 36 on all 4 of its prompts. The citation is valid, so only the figure check stops this; the judge can only flag it afterwards. The check used to stop two more answers, both correct: Qwen said four weeks is 28 days, and GPT OSS 120B added 3 days for each Eid to get 6. Neither total is written in the article. It now accepts that kind of arithmetic, and when the saved replies went through the checks again, both answers passed and the 63 was still stopped. Across 158 answers that leaves one catch, the real one. The two answers that now pass have not been judged, since that would take new requests, so the faithfulness numbers above leave them out.
 
 On the 60 questions both ran, Qwen 3.8 27B matches or beats GPT OSS 120B, on a sample too small to separate them. GPT OSS 120B stays the default because Groq lists it as a production model and Qwen as a preview, which can be withdrawn. Set `QANUN_LLM_MODEL=qwen/qwen3.8-27b` to use Qwen. On the 60 answerable questions one question moves a rate by about 2%, and on the 60 Qwen ran, by about 3%. Qwen was not run on the other 38. One author wrote all questions and labels, and citation precision counts only the labelled article, so an answer that also cites a relevant neighbour lowers it.
 
@@ -300,7 +301,7 @@ The 2020 job-change reforms are covered through the amended Labour Law and Artic
 The corpus is a snapshot from October 2026; `qanun fetch --refresh` and `qanun parse` update it. Known gaps:
 
 - The portal returned 44 of the 50 articles of Law 21 of 2015. Article 1 and Articles 46 to 50 are missing.
-- 17 Labour Law articles have no English text, including Articles 49, 51 and 66 as rewritten or amended since 2009. None of the minimum wage texts have English on the portal. qanun shows the official Arabic for these rather than inventing a translation.
+- 30 articles in force have no English text: 17 from the Labour Law, including Articles 49, 51 and 66 as rewritten or amended since 2009, and all 13 minimum wage articles. This is the source, not the download. Asked for English, Al Meezan returns these articles in Arabic. The 2009 English export covers only the Labour Law, and those 17 articles were added or amended after it. qanun shows the official Arabic for these rather than inventing a translation, and an English answer that uses one says so in a note.
 - The older translation differs from the Arabic in places. Three differences found during review are flagged on the articles themselves (Articles 61, 74 and 78). For example, it gives the night-work window as 9 pm to 6 am where the Arabic says 9 pm to 3 am. Not every article was compared by hand, so there may be more.
 - Article 52 bis has a stray `?` inside a word in the source text, kept as published.
 

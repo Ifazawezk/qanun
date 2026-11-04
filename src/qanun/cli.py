@@ -86,6 +86,9 @@ def cmd_eval_answers(args: argparse.Namespace) -> None:
     from qanun.evaluation import CACHE_PATH
     from qanun.search import SearchEngine
 
+    if args.rescore:
+        rescore_answers()
+        return
     # Long enough to sit out the per-minute window, never long enough to outlast a daily limit.
     client = client_from_env(model=args.model, max_wait=70, max_output=args.max_tokens)
     if client is None:
@@ -117,6 +120,28 @@ def cmd_eval_answers(args: argparse.Namespace) -> None:
     print(f"this run: {m['requests_this_run']} requests, {m['tokens_this_run']} tokens, {m['cache_hits_this_run']} cached")
     if m["stopped_by"]:
         print(f"stopped: {m['stopped_by']}. Run the same command later to resume.")
+    print(f"wrote {answer_eval.REPORT_PATH}")
+
+
+def rescore_answers() -> None:
+    """Run the saved answer evaluations through the current checks, from the cache only."""
+    from qanun import answer_eval
+    from qanun.answer.cache import ResponseCache
+    from qanun.app_factory import embedding_model, reranker_model
+    from qanun.evaluation import CACHE_PATH
+    from qanun.search import SearchEngine
+
+    embedding = embedding_model()
+    engine = SearchEngine.load(embedding, reranker_model(embedding, True))
+    if engine.reranker is None:
+        sys.exit("The reranker did not load, so retrieval would differ from the saved runs.")
+    cache = ResponseCache(CACHE_PATH)
+    for path in sorted(answer_eval.RESULTS_DIR.glob("*.json")):
+        if path.name.endswith(".partial.json"):
+            continue
+        not_judged = answer_eval.rescore(path, engine, cache)
+        print(f"{path.stem}: rescored, {len(not_judged)} not judged {not_judged or ''}".rstrip())
+    answer_eval.write_report()
     print(f"wrote {answer_eval.REPORT_PATH}")
 
 
@@ -195,6 +220,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--daily-tokens", type=int, default=180000, help="most tokens per model per day")
     p.add_argument("--max-article-chars", type=int, help="cut articles, for small context windows")
     p.add_argument("--max-tokens", type=int, help="reply limit for the answer model only")
+    p.add_argument("--rescore", action="store_true", help="recheck saved runs from the cache, with no requests")
     p.set_defaults(func=cmd_eval_answers)
 
     p = sub.add_parser("serve", help="run the HTTP API (and the web UI if it is built)")

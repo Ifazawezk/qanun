@@ -13,31 +13,35 @@
   "stopped_by": null,
   "requests_this_run": 44,
   "tokens_this_run": 59490,
-  "cache_hits_this_run": 210
+  "cache_hits_this_run": 210,
+  "rescored": "2026-11-04",
+  "not_judged": [
+   "en-27"
+  ]
  },
  "summary": {
   "questions": 98,
   "generation_failed": 0,
   "answerable": {
    "total": 60,
-   "answered": 51,
-   "false_refusals": 9,
-   "false_refusal_rate": 0.15,
+   "answered": 52,
+   "false_refusals": 8,
+   "false_refusal_rate": 0.13333333333333333,
    "gold_retrieved": 54,
-   "false_refusals_with_gold_retrieved": 4,
-   "false_refusal_rate_with_gold_retrieved": 0.07407407407407407
+   "false_refusals_with_gold_retrieved": 3,
+   "false_refusal_rate_with_gold_retrieved": 0.05555555555555555
   },
   "citations": {
-   "delivered": 61,
-   "delivered_gold": 51,
-   "precision_against_gold": 0.8360655737704918,
-   "answers_citing_a_gold_article": 50,
-   "answers_citing_a_gold_article_rate": 0.9803921568627451,
+   "delivered": 62,
+   "delivered_gold": 52,
+   "precision_against_gold": 0.8387096774193549,
+   "answers_citing_a_gold_article": 51,
+   "answers_citing_a_gold_article_rate": 0.9807692307692307,
    "invalid_references_caught": 1,
    "answers_with_invalid_references": 1,
    "references_flagged_from_source": 4,
-   "sentences_removed": 3,
-   "wrong_numbers_caught": 2,
+   "sentences_removed": 2,
+   "wrong_numbers_caught": 1,
    "uncited_sentences": 11,
    "invalid_citations_reaching_the_user": 0
   },
@@ -2673,16 +2677,16 @@
     "labour-2004:78"
    ],
    "mode": "generative",
-   "refused": true,
-   "text": "An answer was written, but it did not pass the checks against the articles, so it is not shown. The closest articles are listed below and may answer your question.",
-   "cited": [],
+   "refused": false,
+   "text": "Workers are entitled to three paid days off for Eid al-Fitr and three paid days off for Eid al-Adha each year, giving a total of six paid days for the two Eid holidays[labour-2004:78].",
+   "cited": [
+    "labour-2004:78"
+   ],
    "removed": [],
-   "dropped": 1,
+   "dropped": 0,
    "uncited": 0,
    "flagged": [],
-   "numbers": [
-    6.0
-   ],
+   "numbers": [],
    "error": null,
    "premise_corrected": false,
    "canary_hit": false,

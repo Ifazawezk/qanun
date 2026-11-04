@@ -405,3 +405,40 @@ def test_a_numbered_list_gives_whole_claims():
     """Fragments such as "1." went to the judge as claims and counted as unsupported."""
     text = "Steps:\n1. Pay the wage [labour-2004:66].\n2. Keep a record [labour-2004:66]."
     assert [claim for claim, _ in claims_of(text)] == ["Pay the wage.", "Keep a record."]
+
+
+# ---------------------------------------------------------------- rescoring from the cache
+
+
+def cached_run(engine, tmp_path, judge=True):
+    from qanun.answer.translate import LLMTranslator
+
+    llm = ScriptedLLM(replies={"<claim": verdict_reply(True)}, default="Hours are 36 [labour-2004:73].")
+    client = CachedClient(llm, ResponseCache(tmp_path / "cache.jsonl"), Budget())
+    assistant = Assistant(engine, Generator(client, engine.laws), top_k=3, translator=LLMTranslator(client))
+    meta = {"name": "t", "provider": "fake", "model": "test-model", "judge_model": "test-model",
+            "translation_model": "test-model"}
+    path = tmp_path / "out.json"
+    answer_eval.run(ITEMS[:1], assistant, client, client if judge else None, path, meta)
+    return path, llm
+
+
+def test_rescore_rebuilds_records_from_the_cache_alone(engine, tmp_path):
+    path, llm = cached_run(engine, tmp_path)
+    before = json.loads(path.read_text(encoding="utf-8"))
+    stale = dict(before, records=[dict(before["records"][0], refused=True, cited=[])])
+    path.write_text(json.dumps(stale), encoding="utf-8")
+    calls = len(llm.calls)
+    not_judged = answer_eval.rescore(path, engine, ResponseCache(tmp_path / "cache.jsonl"), ITEMS[:1])
+    after = json.loads(path.read_text(encoding="utf-8"))
+    assert len(llm.calls) == calls
+    assert not_judged == []
+    assert after["records"] == before["records"]
+    assert after["records"][0]["verdicts"][0]["supported"] is True
+    assert after["meta"]["rescored"]
+
+
+def test_rescore_leaves_an_answer_unjudged_rather_than_make_a_request(engine, tmp_path):
+    path, _ = cached_run(engine, tmp_path, judge=False)
+    assert answer_eval.rescore(path, engine, ResponseCache(tmp_path / "cache.jsonl"), ITEMS[:1]) == ["q1"]
+    assert json.loads(path.read_text(encoding="utf-8"))["records"][0]["verdicts"] == []

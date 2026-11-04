@@ -25,10 +25,22 @@ WAW_HAMZA = "ؤ"  # ؤ
 YEH_HAMZA = "ئ"  # ئ
 DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
 PUNCTUATION = str.maketrans({"،": ",", "؛": ";", "؟": "?", "٪": "%"})
+# Persian letters that look like Arabic ones and come from typing on a Persian
+# layout. One article of the minimum wage law has a Persian yeh.
+PERSIAN = str.maketrans(
+    {"\N{ARABIC LETTER FARSI YEH}": "\N{ARABIC LETTER YEH}", "\N{ARABIC LETTER KEHEH}": "\N{ARABIC LETTER KAF}"}
+)
 INVISIBLE = re.compile("[​-‏‪-‮⁦-⁩﻿]")
 
 ARABIC_CHAR = re.compile("[؀-ۿ]")
 LATIN_CHAR = re.compile("[A-Za-z]")
+
+
+def canonical(text: str) -> str:
+    """NFC with Persian look-alike letters replaced. Diacritics are kept, so this is
+    for text a model reads, such as passages for the embedding index. A shadda typed
+    before a kasra, as in Article 116 of the Labour Law, is put back in order."""
+    return unicodedata.normalize("NFC", text).translate(PERSIAN)
 
 
 def strip_diacritics(text: str) -> str:
@@ -44,7 +56,7 @@ def normalize_arabic(
     hamza: bool = True,
 ) -> str:
     """Remove diacritics and tatweel, and fold letter variants to one form."""
-    text = strip_diacritics(text)
+    text = strip_diacritics(text).translate(PERSIAN)
     if alef:
         text = ALEF_FORMS.sub("ا", text)
     if teh_marbuta:

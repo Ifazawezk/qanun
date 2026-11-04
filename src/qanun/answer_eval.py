@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Iterable, Sequence
 
 from qanun.answer.assistant import Assistant
-from qanun.answer.cache import BudgetExhausted, CachedClient
+from qanun.answer.cache import Budget, BudgetExhausted, CachedClient, ResponseCache
 from qanun.answer.generate import (
     CITATION,
     Generator,
@@ -34,7 +34,8 @@ from qanun.answer.generate import (
     split_sentences,
     without_list_marker,
 )
-from qanun.answer.llm import LLMClient, LLMError
+from qanun.answer.llm import PRESETS, LLMClient, LLMError
+from qanun.answer.translate import LLMTranslator
 from qanun.evaluation import EVAL_DIR, Question, load_questions
 
 TRICK_PATH = EVAL_DIR / "answer_questions.jsonl"
@@ -368,6 +369,60 @@ def run(
     return payload
 
 
+class Offline:
+    """Stands in for a provider when only cached replies may be used. A budget of no
+    requests stops CachedClient on a miss, so this is never actually called."""
+
+    def __init__(self, provider: str, model: str):
+        self.provider = provider
+        self.model = model
+
+    def complete(self, system: str, user: str) -> str:
+        raise BudgetExhausted(f"{self.model} reply is not in the cache")
+
+
+def rescore(path: Path, engine, cache: ResponseCache, items: Sequence[Item] | None = None) -> list[str]:
+    """Put a saved run's replies through the current checks again, from the cache only.
+
+    Returns the ids of answers whose claims changed and could not be judged without
+    a new request; they are left unjudged. A missing answer or translation raises
+    BudgetExhausted before anything is written. Replies that failed in the first run
+    were never cached, so those records are kept as they were.
+    """
+    data = json.loads(path.read_text(encoding="utf-8"))
+    meta = data["meta"]
+
+    def cached(model: str) -> CachedClient:
+        return CachedClient(Offline(meta["provider"], model), cache, Budget(requests=0))
+
+    answers = cached(meta["model"])
+    translation_model = meta.get("translation_model") or PRESETS[meta["provider"]].fast_model
+    generator = Generator(answers, engine.laws, meta.get("max_article_chars"))
+    assistant = Assistant(engine, generator, translator=LLMTranslator(cached(translation_model)))
+    judge_client = cached(meta["judge_model"]) if meta.get("judge_model") else None
+    by_id = {item.id: item for item in (load_items() if items is None else items)}
+    records: list[Record] = []
+    not_judged: list[str] = []
+    for old in data["records"]:
+        if old.get("error"):
+            records.append(Record(**old))
+            continue
+        record = run_item(by_id[old["id"]], assistant, answers)
+        if judge_client is not None:
+            try:
+                judge(record, engine.articles, judge_client)
+            except BudgetExhausted:
+                not_judged.append(record.id)
+        records.append(record)
+    payload = {
+        "meta": {**meta, "rescored": date.today().isoformat(), "not_judged": not_judged},
+        "summary": summarize(records),
+        "records": [asdict(r) for r in records],
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n")
+    return not_judged
+
+
 def _saved_ids(path: Path) -> set[str]:
     if not path.exists():
         return set()
@@ -447,6 +502,13 @@ def render_report(results: Iterable[dict]) -> str:
             f"| {m['name']} | {m.get('judge_model') or 'none'} | {j['answers_judged']} | {j['claims']} "
             f"| {j['supported']} | {_pct(j['rate'])} | {j['judge_failed']} |"
         )
+    unjudged = [f"{r['meta']['name']} {i}" for r in results for i in r["meta"].get("not_judged", [])]
+    if unjudged:
+        lines += [
+            "",
+            "Rescoring with the current checks changed these answers, and judging the new text would "
+            f"need a new request, so they are not judged: {', '.join(unjudged)}.",
+        ]
     for r in results:
         rows = [
             (rec["id"], v["claim"], v["reason"])

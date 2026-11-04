@@ -23,6 +23,7 @@ class CitationOut(BaseModel):
     rank: int
     score: float
     cited: bool
+    has_english: bool = True
     passage: PassageOut | None
 
 

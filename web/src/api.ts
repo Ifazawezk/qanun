@@ -18,6 +18,7 @@ export interface Citation {
   rank: number;
   score: number;
   cited: boolean;
+  has_english?: boolean;
   passage: Passage | null;
 }
 

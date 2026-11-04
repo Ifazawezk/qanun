@@ -12,6 +12,7 @@ no number word, so they cannot be compared fairly.
 from __future__ import annotations
 
 import re
+from itertools import combinations
 
 from qanun.text.normalize import DIGITS, normalize_arabic
 
@@ -104,4 +105,105 @@ def numbers_in(text: str) -> set[float]:
     plain = text.translate(DIGITS)
     found = {float(m.replace(",", "").replace("،", "")) for m in DIGIT_NUMBER.findall(plain)}
     found |= _arabic_numbers(plain) | _english_numbers(plain)
+    return {n for n in found if n >= SMALLEST}
+
+
+# ---------------------------------------------------------------- simple arithmetic
+#
+# A correct answer may add up or convert figures that the article states: 3 days for
+# each Eid is 6 days, and four weeks is 28 days. Only two figures are ever summed,
+# and only figures with the same unit in the same article. Three would be too loose:
+# Article 90 has 36, 24 and 3 hours, which add up to the 63 of a real wrong answer.
+
+UNITS = {
+    "day": "يوم يوما ايام day days",
+    "week": "اسبوع اسبوعا اسابيع week weeks",
+    "month": "شهر شهرا اشهر شهور month months",
+    "hour": "ساعه ساعات hour hours",
+}
+UNIT_OF = {word: unit for unit, words in UNITS.items() for word in words.split()}
+DUAL = {"يومين": "day", "يومان": "day", "اسبوعين": "week", "اسبوعان": "week", "شهرين": "month",
+        "شهران": "month", "ساعتين": "hour", "ساعتان": "hour"}
+# Words that may sit between a number and its unit, as in "three working days".
+BETWEEN = {"working", "work", "consecutive", "calendar", "paid", "full"}
+MONTH_WORDS = {"شهر", "الشهر", "month", "the"}
+DAYS_IN_WEEK = 7
+TOKEN = re.compile(r"\d+(?:,\d{3})*(?:\.\d+)?|[ء-ي]+|[A-Za-z]+")
+LIST_MARKER = re.compile(r"^\s*\d+\s*[-.)]")
+
+
+def _word_number(word: str) -> bool:
+    if word in ENGLISH or word in ("hundred", "thousand"):
+        return True
+    return _arabic_value(word) is not None
+
+
+def _value_before(words: list[str], end: int) -> float | None:
+    """The number written just before position end, in digits or in words."""
+    if end <= 0:
+        return None
+    if words[end - 1][0].isdigit():
+        return float(words[end - 1].replace(",", ""))
+    start = end
+    while start > 0 and (_word_number(words[start - 1]) or (words[start - 1] == "and" and start < end)):
+        start -= 1
+    phrase = " ".join(words[start:end])
+    found = _english_numbers(phrase) | _arabic_numbers(phrase)
+    found |= {float(ENGLISH[w]) for w in words[start:end] if w in ("one", "two")}
+    return max(found) if found else None
+
+
+def _figures(text: str) -> list[tuple[float, str, bool]]:
+    """(value, unit, per day) for each figure with a unit, such as 8 hours a day."""
+    figures = []
+    for line in normalize_arabic(text.translate(DIGITS)).lower().split("\n"):
+        words = TOKEN.findall(LIST_MARKER.sub("", line))
+        for i, word in enumerate(words):
+            unit = UNIT_OF.get(word)
+            if word in DUAL:
+                value, unit = 2.0, DUAL[word]
+            elif unit is None:
+                continue
+            else:
+                end = i - 1 if i and words[i - 1] in BETWEEN else i
+                value = _value_before(words, end)
+                if value is None:
+                    continue
+            after = " ".join(words[i + 1 : i + 3])
+            per_day = after.startswith(("يوميا", "في اليوم", "per day", "a day", "each day", "daily"))
+            figures.append((value, unit, per_day))
+    return figures
+
+
+def _days_in_month(text: str) -> float | None:
+    """A month counts as days only where the article says how many."""
+    words = TOKEN.findall(normalize_arabic(text.translate(DIGITS)).lower())
+    for i, word in enumerate(words):
+        if word in ("شهر", "الشهر", "month"):
+            for unit_at in range(i + 2, min(i + 6, len(words))):
+                if UNIT_OF.get(words[unit_at]) == "day":
+                    value = _value_before(words, unit_at)
+                    if value is not None and 28 <= value <= 31:
+                        return value
+    return None
+
+
+def derived_numbers(text: str) -> set[float]:
+    """Figures a correct answer can reach with simple arithmetic on one text: the sum
+    of two figures with the same unit, weeks as days, months as days where the text
+    says how long a month is, and hours a day times a number of days."""
+    figures = _figures(text)
+    found: set[float] = set()
+    for (a, unit_a, _), (b, unit_b, _) in combinations(figures, 2):
+        if unit_a == unit_b:
+            found.add(a + b)
+    month = _days_in_month(text)
+    days = [value for value, unit, _ in figures if unit == "day"]
+    for value, unit, per_day in figures:
+        if unit == "week":
+            found.add(value * DAYS_IN_WEEK)
+        elif unit == "month" and month:
+            found.add(value * month)
+        elif unit == "hour" and per_day:
+            found.update(value * d for d in days)
     return {n for n in found if n >= SMALLEST}

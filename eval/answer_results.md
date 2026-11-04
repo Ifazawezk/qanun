@@ -21,8 +21,8 @@ Citation precision counts a citation as correct only if it is the labelled gold 
 | ar-allam | 2/5 (40%) | 2/5 | 3/3 (100%) | 1/1 | 0/2 | 0/3 (0%) | 0/3 | 3 | 0 | 0 |
 | ar-gpt-oss-120b | 0/6 (0%) | 0/6 | 3/3 (100%) | 1/1 | 0/2 | 7/8 (88%) | 6/6 | 0 | 0 | 0 |
 | ar-qwen | 0/6 (0%) | 0/6 | 3/3 (100%) | 1/1 | 0/2 | 7/8 (88%) | 6/6 | 0 | 0 | 0 |
-| gpt-oss-120b | 9/60 (15%) | 4/54 | 23/23 (100%) | 7/7 | 0/8 | 51/61 (84%) | 50/51 | 1 | 2 | 0 |
-| qwen | 4/30 (13%) | 2/27 | 15/15 (100%) | 7/7 | 0/8 | 26/34 (76%) | 25/26 | 2 | 1 | 0 |
+| gpt-oss-120b | 8/60 (13%) | 3/54 | 23/23 (100%) | 7/7 | 0/8 | 52/62 (84%) | 51/52 | 1 | 1 | 0 |
+| qwen | 4/30 (13%) | 2/27 | 15/15 (100%) | 7/7 | 0/8 | 26/34 (76%) | 25/26 | 2 | 0 | 0 |
 
 ## Measured by an LLM judge
 
@@ -35,6 +35,8 @@ Citation precision counts a citation as correct only if it is the labelled gold 
 | ar-qwen | openai/gpt-oss-20b | 8 | 11 | 10 | 91% | 0 |
 | gpt-oss-120b | openai/gpt-oss-20b | 58 | 84 | 79 | 94% | 0 |
 | qwen | openai/gpt-oss-20b | 36 | 85 | 85 | 100% | 0 |
+
+Rescoring with the current checks changed these answers, and judging the new text would need a new request, so they are not judged: gpt-oss-120b en-27, qwen fal-04.
 
 ### Claims the judge rejected: ar-allam
 

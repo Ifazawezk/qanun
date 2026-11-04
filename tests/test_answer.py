@@ -86,6 +86,15 @@ def test_english_question_on_arabic_only_article_shows_arabic_passage(assistant)
     top = answer.citations[0]
     assert top.article_id == "labour-2004:79"
     assert top.passage.lang == "ar"
+    assert not top.has_english
+    assert any("no English text for Article 79 of the Labour Law" in note for note in answer.notes)
+
+
+def test_no_english_note_only_for_english_questions_on_arabic_only_articles(assistant):
+    english = assistant.ask("How many hours can I work in Ramadan?", k=1)
+    assert english.citations[0].has_english and english.notes == []
+    arabic = assistant.ask("ما هي مدة الإجازة السنوية؟", k=1)
+    assert not arabic.citations[0].has_english and arabic.notes == []
 
 
 def test_generative_mode_without_llm_is_an_error(assistant):

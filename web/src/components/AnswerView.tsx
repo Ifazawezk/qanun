@@ -67,6 +67,7 @@ function CitationCard({ c, uiLang, onOpen }: { c: Citation; uiLang: Lang; onOpen
         {c.cited && <span className="badge badge-cited">{s.cited}</span>}
       </header>
       {c.passage && <Highlighted passage={c.passage} />}
+      {uiLang === "en" && c.has_english === false && <p className="note small">{s.noEnglish}</p>}
       <footer>
         <button className="link-button" onClick={() => onOpen(c.article_id)}>
           {s.readArticle}

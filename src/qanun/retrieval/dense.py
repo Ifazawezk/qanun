@@ -20,6 +20,7 @@ import numpy as np
 from qanun.corpus.models import Article, Law
 from qanun.retrieval.base import Hit, law_mask, top_hits
 from qanun.retrieval.documents import Passage, article_passages
+from qanun.text.normalize import canonical
 
 log = logging.getLogger("qanun.dense")
 
@@ -176,7 +177,7 @@ class DenseIndex:
     # ------------------------------------------------------------ search
 
     def passage_scores(self, query: str) -> np.ndarray:
-        vector = self.encoder.encode_queries([query])[0]
+        vector = self.encoder.encode_queries([canonical(query)])[0]
         return self.embeddings @ vector
 
     def scores(self, query: str, lang: str | None = None) -> np.ndarray:

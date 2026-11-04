@@ -13,7 +13,11 @@
   "stopped_by": null,
   "requests_this_run": 91,
   "tokens_this_run": 157174,
-  "cache_hits_this_run": 65
+  "cache_hits_this_run": 65,
+  "rescored": "2026-11-04",
+  "not_judged": [
+   "fal-04"
+  ]
  },
  "summary": {
   "questions": 60,
@@ -36,9 +40,9 @@
    "invalid_references_caught": 2,
    "answers_with_invalid_references": 2,
    "references_flagged_from_source": 4,
-   "sentences_removed": 3,
-   "wrong_numbers_caught": 1,
-   "uncited_sentences": 2,
+   "sentences_removed": 2,
+   "wrong_numbers_caught": 0,
+   "uncited_sentences": 1,
    "invalid_citations_reaching_the_user": 0
   },
   "refusal": {
@@ -48,8 +52,8 @@
   },
   "false_premise": {
    "total": 7,
-   "refused": 2,
-   "corrected": 5
+   "refused": 1,
+   "corrected": 6
   },
   "hostile": {
    "total": 8,
@@ -1547,18 +1551,18 @@
    ],
    "gold": [],
    "mode": "generative",
-   "refused": true,
-   "text": "The retrieved articles do not answer this question, so I cannot answer it from the law texts in this corpus. The closest articles are listed below.",
-   "cited": [],
-   "removed": [],
-   "dropped": 1,
-   "uncited": 1,
-   "flagged": [],
-   "numbers": [
-    28.0
+   "refused": false,
+   "text": "No, that is incorrect. Annual leave is four weeks (28 days) for a worker whose service is five years or more, not 60 days [labour-2004:79].",
+   "cited": [
+    "labour-2004:79"
    ],
+   "removed": [],
+   "dropped": 0,
+   "uncited": 0,
+   "flagged": [],
+   "numbers": [],
    "error": null,
-   "premise_corrected": false,
+   "premise_corrected": true,
    "canary_hit": false,
    "verdicts": [],
    "judge_failed": false
