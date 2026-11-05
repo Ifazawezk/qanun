@@ -25,10 +25,12 @@ dependencies = [
 [project.optional-dependencies]
 # Install PyTorch first (CPU build: pip install torch --index-url https://download.pytorch.org/whl/cpu)
 embeddings = ["sentence-transformers>=3.0"]
-# The data tools come from GitHub, pinned to a commit. qatar-data-checks runs data/corpus/checks.yaml.
+# The data tools come from GitHub, pinned to a commit. qatar-data-checks runs data/corpus/checks.yaml,
+# and qatar-abtest checks the bootstrap intervals in eval/results.md.
 dev = [
     "pytest>=8",
     "qatar-data-checks @ git+https://github.com/Ifazawezk/qatar-data-checks@1736f845d9cadac8d7c569625d28e3c83a005f7a",
+    "qatar-abtest @ git+https://github.com/Ifazawezk/qatar-abtest@be4baeb8e91832821c48e297e69a70eb5d8c3cfc",
 ]
 
 [project.scripts]

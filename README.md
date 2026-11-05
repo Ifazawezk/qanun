@@ -190,6 +190,8 @@ The [full report](eval/results.md) has the results by language, paired bootstrap
 - Without a key the gain is small. Searching each language separately lifts MRR a little and finds only 1 of the 9 Arabic-only questions, so if you search in English without a key, expect to miss articles published only in Arabic. The MiniLM hybrid has a slightly higher Recall@5 (0.750 against 0.733), but that is 1 question out of 60, and e5-small is clearly better at ranking the right article first. On first place, e5-small alone (0.558) is beaten only by the full setup.
 - These are development numbers, not a held-out score. With 60 questions, one question moves Recall by about 0.017. One author wrote the questions and labels, most questions have a single gold article, and the same set was used to compare models, fusion methods and the reranker. CombMAX was chosen before it was measured and the translation prompt has no examples drawn from these questions, but the decision to turn the reranker on was made on this set.
 
+[qatar-abtest](https://github.com/Ifazawezk/qatar-abtest) computes the same intervals with its own code and gets the same numbers from `eval/results.json`, which `tests/test_qabtest.py` checks.
+
 Some example questions, with the rank of the gold article (a dash means not in the top 10):
 
 | Question | Gold article | BM25 | e5-small | Hybrid | What happened |
