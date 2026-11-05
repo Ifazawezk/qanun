@@ -1,0 +1,36 @@
+# Checks for the article corpus, run with qatar-data-checks from the dev extra:
+#   qdc run data/corpus/articles.jsonl -c data/corpus/checks.yaml
+# tests/test_corpus_checks.py runs the same file. The Arabic text is kept exactly as Al Meezan
+# publishes it, and search normalises Unicode order and Persian letters, so problems in the
+# stored text are warnings. The test fails if one shows up that search does not normalise.
+dataset: qanun articles
+table:
+  - row_count: {min: 1}
+  - rule: {expr: "id == law.str.cat(label, sep=':')", name: id is law and label}
+  - rule: {expr: "text_en.isna() == text_en_source.isna()", name: English text has a source}
+columns:
+  id: [not_null, unique]
+  law:
+    - not_null
+    - references: {path: laws.json, column: key}
+  label:
+    - unique: {with_columns: [law]}
+  kind:
+    - allowed: [article, issuance]
+  status:
+    - allowed: [in_force, repealed]
+  text_ar:
+    - not_null
+    - length: {min: 15, name: no empty articles}
+    - script: arabic
+    - arabic_text: {severity: warn}
+  text_en:
+    - not_null: {severity: warn, name: has English text}
+    - script: latin
+  title_ar:
+    - not_null
+    - arabic_text: {severity: warn}
+  effective_date:
+    - range: {min: 1971-09-03, max: 2026-12-31}
+  source_url:
+    - regex: 'https://almeezan[.]qa/.+'

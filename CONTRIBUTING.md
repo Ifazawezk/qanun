@@ -48,7 +48,7 @@ For the web UI, run `qanun serve` in one terminal and `npm ci && npm run dev` in
    - Article labels look right, especially `bis` articles.
    - Repealed and superseded versions are not marked `in_force`.
    - Text in `text_en` really is English. The API falls back to Arabic when a translation is missing.
-5. Rebuild the index with `qanun index`, then run `pytest`. `tests/test_corpus.py` checks ids, sources and the laws file.
+5. Rebuild the index with `qanun index`, then run `pytest`. `tests/test_corpus.py` checks ids, sources and the laws file, and `tests/test_corpus_checks.py` runs `data/corpus/checks.yaml` (also `qdc run data/corpus/articles.jsonl -c data/corpus/checks.yaml`).
 6. Add evaluation questions for the new law, as described below, and report the change in numbers in your pull request.
 7. Update the tables in "Data sources and terms" in `README.md`.
 

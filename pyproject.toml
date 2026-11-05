@@ -25,7 +25,11 @@ dependencies = [
 [project.optional-dependencies]
 # Install PyTorch first (CPU build: pip install torch --index-url https://download.pytorch.org/whl/cpu)
 embeddings = ["sentence-transformers>=3.0"]
-dev = ["pytest>=8"]
+# The data tools come from GitHub, pinned to a commit. qatar-data-checks runs data/corpus/checks.yaml.
+dev = [
+    "pytest>=8",
+    "qatar-data-checks @ git+https://github.com/Ifazawezk/qatar-data-checks@1736f845d9cadac8d7c569625d28e3c83a005f7a",
+]
 
 [project.scripts]
 qanun = "qanun.cli:main"

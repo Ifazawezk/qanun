@@ -305,6 +305,14 @@ The corpus is a snapshot from October 2026; `qanun fetch --refresh` and `qanun p
 - The older translation differs from the Arabic in places. Three differences found during review are flagged on the articles themselves (Articles 61, 74 and 78). For example, it gives the night-work window as 9 pm to 6 am where the Arabic says 9 pm to 3 am. Not every article was compared by hand, so there may be more.
 - Article 52 bis has a stray `?` inside a word in the source text, kept as published.
 
+`data/corpus/checks.yaml` checks the corpus with [qatar-data-checks](https://github.com/Ifazawezk/qatar-data-checks), which the dev extra installs:
+
+```bash
+qdc run data/corpus/articles.jsonl -c data/corpus/checks.yaml
+```
+
+It passes with two warnings. One is the 30 articles without English text. The other is two articles whose Arabic is odd in the source: Labour Law Article 116 types a shadda before a kasra, so it is not in NFC, and Article 1 of the Minimum Wage Law has a Persian yeh. These stay as published, so they are warnings and not errors. Search folds both before indexing, and `tests/test_corpus_checks.py` fails if the stored text shows any other kind of problem.
+
 The law texts belong to their publishers and are not covered by this repository's MIT license. Al Meezan links its terms of use from the portal, but they could not be read through the API, so read them yourself before reusing the data. The older export states that it should not be considered official, and the Arabic text is the authoritative one.
 
 ## Next
