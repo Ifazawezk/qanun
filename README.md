@@ -190,6 +190,8 @@ The [full report](eval/results.md) has the results by language, paired bootstrap
 - Without a key the gain is small. Searching each language separately lifts MRR a little and finds only 1 of the 9 Arabic-only questions, so if you search in English without a key, expect to miss articles published only in Arabic. The MiniLM hybrid has a slightly higher Recall@5 (0.750 against 0.733), but that is 1 question out of 60, and e5-small is clearly better at ranking the right article first. On first place, e5-small alone (0.558) is beaten only by the full setup.
 - These are development numbers, not a held-out score. With 60 questions, one question moves Recall by about 0.017. One author wrote the questions and labels, most questions have a single gold article, and the same set was used to compare models, fusion methods and the reranker. CombMAX was chosen before it was measured and the translation prompt has no examples drawn from these questions, but the decision to turn the reranker on was made on this set.
 
+[qatar-abtest](https://github.com/Ifazawezk/qatar-abtest) computes the same intervals with its own code and gets the same numbers from `eval/results.json`, which `tests/test_qabtest.py` checks.
+
 Some example questions, with the rank of the gold article (a dash means not in the top 10):
 
 | Question | Gold article | BM25 | e5-small | Hybrid | What happened |
@@ -304,6 +306,14 @@ The corpus is a snapshot from October 2026; `qanun fetch --refresh` and `qanun p
 - 30 articles in force have no English text: 17 from the Labour Law, including Articles 49, 51 and 66 as rewritten or amended since 2009, and all 13 minimum wage articles. This is the source, not the download. Asked for English, Al Meezan returns these articles in Arabic. The 2009 English export covers only the Labour Law, and those 17 articles were added or amended after it. qanun shows the official Arabic for these rather than inventing a translation, and an English answer that uses one says so in a note.
 - The older translation differs from the Arabic in places. Three differences found during review are flagged on the articles themselves (Articles 61, 74 and 78). For example, it gives the night-work window as 9 pm to 6 am where the Arabic says 9 pm to 3 am. Not every article was compared by hand, so there may be more.
 - Article 52 bis has a stray `?` inside a word in the source text, kept as published.
+
+`data/corpus/checks.yaml` checks the corpus with [qatar-data-checks](https://github.com/Ifazawezk/qatar-data-checks), which the dev extra installs:
+
+```bash
+qdc run data/corpus/articles.jsonl -c data/corpus/checks.yaml
+```
+
+It passes with two warnings. One is the 30 articles without English text. The other is two articles whose Arabic is odd in the source: Labour Law Article 116 types a shadda before a kasra, so it is not in NFC, and Article 1 of the Minimum Wage Law has a Persian yeh. These stay as published, so they are warnings and not errors. Search folds both before indexing, and `tests/test_corpus_checks.py` fails if the stored text shows any other kind of problem.
 
 The law texts belong to their publishers and are not covered by this repository's MIT license. Al Meezan links its terms of use from the portal, but they could not be read through the API, so read them yourself before reusing the data. The older export states that it should not be considered official, and the Arabic text is the authoritative one.
 
